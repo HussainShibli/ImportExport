@@ -13,7 +13,6 @@ metric = st.selectbox("Select Metric", ["value", "netWgt"])
 
 def render_combined_sunburst_chart(all_data, metric):
     all_data['cmdCode'] = all_data['cmdCode'].astype(str)
-    all_data['HS2'] = all_data['cmdCode'].str[:2]
     all_data['HS4'] = all_data['cmdCode'].str[:4]
     all_data['HS6'] = all_data['cmdCode'].str[:6]
 
@@ -24,13 +23,13 @@ def render_combined_sunburst_chart(all_data, metric):
     all_data['reporterDesc'] = all_data['reporterDesc'].fillna('Unknown Country')
     all_data['countryFlow'] = all_data['reporterDesc'] + " (" + all_data['flowDesc'] + ")"
 
-    grouped = all_data.groupby(['countryFlow', 'HS2', 'HS4', 'HS6'])[metric].sum().reset_index()
+    grouped = all_data.groupby(['countryFlow', 'HS4', 'HS6'])[metric].sum().reset_index()
 
     fig = px.sunburst(
         grouped,
-        path=['countryFlow', 'HS2', 'HS4', 'HS6'],
+        path=['countryFlow', 'HS4', 'HS6'],
         values=metric,
-        title="🌐 Combined Sunburst Chart – Import & Export by HS2 → HS4 → HS6 (by Country)",
+        title="🌐 Combined Sunburst Chart – Import & Export by HS4 → HS6 (by Country)",
         color='countryFlow'
     )
     fig.update_traces(insidetextorientation='radial')
