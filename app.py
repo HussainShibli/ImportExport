@@ -49,7 +49,7 @@ def render_combined_hs4_stacked_bar(df, metric):
     df['countryFlow'] = df['reporterDesc'] + " (" + df['flowDesc'] + ")"
 
     grouped = df.groupby(['countryFlow', 'HS4'])[metric].sum().reset_index()
-    pivot = grouped.pivot_table(index='countryFlow', columns='HS4', values=metric, aggfunc='sum').fillna(0)
+    pivot = grouped.pivot(index='countryFlow', columns='HS4', values=metric).fillna(0)
 
     if not pivot.empty:
         fig = px.bar(
