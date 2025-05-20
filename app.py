@@ -71,58 +71,32 @@ def render_combined_stacked_bar(df, metric):
             with cols[idx]:
                 st.plotly_chart(fig, use_container_width=True)
 
-    st.markdown("### 📊 Percentage Stacked Bar Chart – HS4 Share within Each Country")
-    df['cmdCode'] = df['cmdCode'].astype(str)
-    df['HS4'] = df['cmdCode'].str[:4]
-    df['value'] = df.get('cifvalue', pd.NA).fillna(df.get('fobvalue', pd.NA))
-    df['reporterDesc'] = df.get('reporterDesc', 'Unknown Country').fillna('Unknown Country')
-    df['flowDesc'] = df.get('flowDesc', '').str.lower()
-    df['countryFlow'] = df['reporterDesc'] + " (" + df['flowDesc'] + ")"
-    df = df[df['HS4'].str.len() == 4]
+    st.markdown("### 📊 Yearly Percentage Stacked Bar Charts – HS4 Share")
+    df['year'] = pd.to_numeric(df.get('refYear', pd.NA), errors='coerce')
+    years = df['year'].dropna().unique()
+    cols = st.columns(len(years))
+    for idx, year in enumerate(sorted(years)):
+        year_df = df[df['year'] == year]
+        grouped = year_df.groupby(['countryFlow', 'HS4'])[metric].sum().reset_index()
+        pivot = grouped.pivot(index='countryFlow', columns='HS4', values=metric).fillna(0)
+        percent_df = pivot.div(pivot.sum(axis=1), axis=0).reset_index().melt(id_vars='countryFlow', var_name='HS4', value_name='percentage')
+        percent_df['percentage'] *= 100
 
-    grouped = df.groupby(['countryFlow', 'HS4'])[metric].sum().reset_index()
+        if not percent_df.empty:
+            fig = px.bar(
+                percent_df,
+                x='countryFlow',
+                y='percentage',
+                color='HS4',
+                title=f"HS4 Share – {int(year)}",
+                labels={'percentage': 'Percentage (%)', 'HS4': 'HS4 Code'},
+                text_auto='.1f'
+            )
+            fig.update_layout(barmode='stack', xaxis_title="Country (Flow)", yaxis_title="Percentage (%)")
+            with cols[idx]:
+                st.plotly_chart(fig, use_container_width=True)
 
-    pivot = grouped.pivot(index='countryFlow', columns='HS4', values=metric).fillna(0)
-    percent_df = pivot.div(pivot.sum(axis=1), axis=0).reset_index().melt(id_vars='countryFlow', var_name='HS4', value_name='percentage')
-    percent_df['percentage'] *= 100
-
-    if not percent_df.empty:
-        fig = px.bar(
-            percent_df,
-            x='countryFlow',
-            y='percentage',
-            color='HS4',
-            title=f"Importing and Exporting Countries – HS4 Share (Percentage)",
-            labels={'percentage': 'Percentage (%)', 'HS4': 'HS4 Code'},
-            text_auto='.1f'
-        )
-        fig.update_layout(barmode='stack', xaxis_title="Country (Flow)", yaxis_title="Percentage (%)")
-        st.plotly_chart(fig, use_container_width=True)
-
-    st.markdown("### 📊 Combined Stacked Bar Chart – HS4 Breakdown for Importing and Exporting Countries")
-
-    df['cmdCode'] = df['cmdCode'].astype(str)
-    df['HS4'] = df['cmdCode'].str[:4]
-    df['value'] = df.get('cifvalue', pd.NA).fillna(df.get('fobvalue', pd.NA))
-    df['reporterDesc'] = df.get('reporterDesc', 'Unknown Country').fillna('Unknown Country')
-    df['flowDesc'] = df.get('flowDesc', '').str.lower()
-    df['countryFlow'] = df['reporterDesc'] + " (" + df['flowDesc'] + ")"
-    df = df[df['HS4'].str.len() == 4]
-
-    grouped = df.groupby(['countryFlow', 'HS4'])[metric].sum().reset_index()
-
-    if not grouped.empty:
-        fig = px.bar(
-            grouped,
-            x='countryFlow',
-            y=metric,
-            color='HS4',
-            title=f"Importing and Exporting Countries – HS4 Composition ({'USD' if metric == 'value' else 'kg'})",
-            labels={'value': metric, 'HS4': 'HS4 Code'},
-            text_auto='.2s'
-        )
-        fig.update_layout(barmode='stack', xaxis_title="Country (Flow)", yaxis_title=f"{metric} ({'USD' if metric == 'value' else 'kg'})")
-        st.plotly_chart(fig, use_container_width=True)
+    
 
 
 if uploaded_files:
