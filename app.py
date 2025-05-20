@@ -26,6 +26,8 @@ def render_combined_sunburst(df, metric):
     cols = st.columns(len(years))
     for idx, year in enumerate(sorted(years)):
         year_df = df[df['year'] == year]
+        year_df['flow_order'] = year_df['flowDesc'].map({'import': 0, 'export': 1})
+        year_df = year_df.sort_values(by=['flow_order', 'reporterDesc'])
         grouped = year_df.groupby(['countryFlow', 'HS4', 'HS6'])[metric].sum().reset_index()
         fig = px.sunburst(
             grouped,
