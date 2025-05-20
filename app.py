@@ -99,5 +99,19 @@ if uploaded_files:
 
     if all_data:
         combined_df = pd.concat(all_data, ignore_index=True)
-        render_combined_sunburst(combined_df, metric)
-        render_combined_stacked_bar(combined_df, metric)
+
+        combined_df['cmdCode'] = combined_df['cmdCode'].astype(str)
+        combined_df['HS2'] = combined_df['cmdCode'].str[:2]
+        combined_df['HS4'] = combined_df['cmdCode'].str[:4]
+
+        hs2_options = sorted(combined_df['HS2'].unique())
+        selected_hs2 = st.multiselect("Select HS2 Codes", options=hs2_options, default=hs2_options)
+
+        filtered_df = combined_df[combined_df['HS2'].isin(selected_hs2)]
+
+        hs4_options = sorted(filtered_df['HS4'].unique())
+        selected_hs4 = st.multiselect("Select HS4 Codes (within selected HS2s)", options=hs4_options, default=hs4_options)
+
+        final_df = filtered_df[filtered_df['HS4'].isin(selected_hs4)]
+        render_combined_sunburst(final_df, metric)
+        render_combined_stacked_bar(final_df, metric)
