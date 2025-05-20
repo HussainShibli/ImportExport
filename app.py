@@ -38,30 +38,30 @@ def render_combined_sunburst_chart(all_data, metric):
     st.plotly_chart(fig, use_container_width=True)
 
 
-def render_stacked_bar_charts(df, metric):
-    st.markdown("### 📊 Stacked Bar Chart – HS2 Trade Value by Country and Flow")
+def render_hs4_share_bar_chart(df, metric):
+    st.markdown("### 📊 Percentage Share of HS4 within HS2 – by Country")
 
-    grouped = df.groupby(['reporterDesc', 'flowDesc', 'HS2'])[metric].sum().reset_index()
-    pivot_abs = grouped.pivot_table(index='HS2', columns=['reporterDesc', 'flowDesc'], values=metric, aggfunc='sum').fillna(0)
+    df['cmdCode'] = df['cmdCode'].astype(str)
+    df['HS2'] = df['cmdCode'].str[:2]
+    df['HS4'] = df['cmdCode'].str[:4]
+    df['value'] = df.get('cifvalue', pd.NA).fillna(df.get('fobvalue', pd.NA))
 
-    fig1, ax1 = plt.subplots(figsize=(14, 7))
-    pivot_abs.plot(kind='bar', stacked=True, ax=ax1)
-    ax1.set_title("Absolute Trade Value by HS2", fontsize=14)
-    ax1.set_ylabel(metric)
-    ax1.set_xlabel("HS2 Code")
-    ax1.legend(title="Country / Flow", bbox_to_anchor=(1.05, 1), loc='upper left')
-    st.pyplot(fig1)
+    df['reporterDesc'] = df.get('reporterDesc', 'Unknown Country').fillna('Unknown Country')
+    grouped = df.groupby(['reporterDesc', 'HS2', 'HS4'])[metric].sum().reset_index()
 
-    st.markdown("### 📊 Percentage Stacked Bar Chart – Share by HS2")
+    pivot = grouped.pivot_table(index=['HS2', 'HS4'], columns='reporterDesc', values=metric, aggfunc='sum').fillna(0)
 
-    pivot_pct = pivot_abs.div(pivot_abs.sum(axis=1), axis=0) * 100
-    fig2, ax2 = plt.subplots(figsize=(14, 7))
-    pivot_pct.plot(kind='bar', stacked=True, ax=ax2)
-    ax2.set_title("Percentage Share by HS2", fontsize=14)
-    ax2.set_ylabel("Percentage (%)")
-    ax2.set_xlabel("HS2 Code")
-    ax2.legend(title="Country / Flow", bbox_to_anchor=(1.05, 1), loc='upper left')
-    st.pyplot(fig2)
+    percentage_pivot = pivot.groupby(level=0).apply(lambda x: x.div(x.sum(axis=0), axis=1)) * 100
+
+    for hs2_code in percentage_pivot.index.levels[0]:
+        hs4_subset = percentage_pivot.loc[hs2_code]
+        fig, ax = plt.subplots(figsize=(12, 6))
+        hs4_subset.plot(kind='bar', stacked=True, ax=ax)
+        ax.set_title(f"HS4 Share of Total {metric} within HS2 {hs2_code} – by Country")
+        ax.set_ylabel("Percentage (%)")
+        ax.set_xlabel("HS4 Code")
+        ax.legend(title="Country", bbox_to_anchor=(1.05, 1), loc='upper left')
+        st.pyplot(fig)
 
 
 if uploaded_files:
@@ -76,4 +76,4 @@ if uploaded_files:
     if all_data:
         combined_df = pd.concat(all_data, ignore_index=True)
         render_combined_sunburst_chart(combined_df, metric)
-        render_stacked_bar_charts(combined_df, metric)
+        render_hs4_share_bar_chart(combined_df, metric)
