@@ -92,7 +92,7 @@ def render_combined_stacked_bar(df, metric):
                 labels={'percentage': 'Percentage (%)', 'HS4': 'HS4 Code'},
                 text_auto='.1f'
             )
-            fig.update_layout(barmode='stack', xaxis_title="Country (Flow)", yaxis_title="Percentage (%)")
+            fig.update_layout(barmode='stack', xaxis_title="Country (Flow)", yaxis_title="Percentage (%)", showlegend=(idx == 0))
             with cols[idx]:
                 st.plotly_chart(fig, use_container_width=True)
 
