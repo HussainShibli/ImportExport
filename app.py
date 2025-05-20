@@ -63,7 +63,6 @@ def render_combined_stacked_bar(df, metric):
         st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("### 📊 Combined Stacked Bar Chart – HS4 Breakdown for Importing and Exporting Countries")
-    st.markdown("### 📊 Combined Stacked Bar Chart – HS4 Breakdown for Importing and Exporting Countries")
 
     df['cmdCode'] = df['cmdCode'].astype(str)
     df['HS4'] = df['cmdCode'].str[:4]
