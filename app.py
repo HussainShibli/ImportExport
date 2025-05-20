@@ -109,10 +109,11 @@ if uploaded_files:
 
         filtered_df = combined_df[combined_df['HS2'].isin(selected_hs2)]
 
-        hs4_options = sorted(filtered_df['HS4'].unique())
+        hs4_options = sorted([code for code in filtered_df['HS4'].unique() if len(code) == 4 and not code[:2] == code])
         selected_hs4 = st.multiselect("Select HS4 Codes (within selected HS2s)", options=hs4_options, default=hs4_options)
 
-        hs6_options = sorted(filtered_df[filtered_df['HS4'].isin(selected_hs4)]['cmdCode'].str[:6].unique())
+        hs6_candidates = filtered_df[filtered_df['HS4'].isin(selected_hs4)]['cmdCode'].str[:6].unique()
+hs6_options = sorted([code for code in hs6_candidates if code[:4] != code and code[:2] != code])
         selected_hs6 = st.multiselect("Select HS6 Codes (within selected HS4s)", options=hs6_options, default=hs6_options)
 
         final_df = filtered_df[(filtered_df['HS4'].isin(selected_hs4)) & (filtered_df['cmdCode'].str[:6].isin(selected_hs6))]
