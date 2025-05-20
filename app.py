@@ -2,134 +2,70 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-st.set_page_config(page_title="HS Code Import/Export Analyzer", layout="wide")
-st.title("📦 HS Code Import/Export Analyzer")
-st.markdown("Upload one or more CSV files containing HS-level trade data. This tool will prepare data for visualization.")
+st.set_page_config(layout="wide")
 
-uploaded_files = st.file_uploader("Upload your CSV file(s)", type=["csv"], accept_multiple_files=True)
+st.title("📦 Import/Export Analysis by HS Code Level")
 
-metric = st.selectbox("Select Metric", ["value", "netWgt"])
+uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
 
+if uploaded_file:
+    df = pd.read_csv(uploaded_file)
 
-def render_combined_sunburst(df, metric):
-    level = st.radio("Select HS Level for Sunburst", options=["HS4", "HS6"], horizontal=True)
-    st.markdown("### 🌐 Sunburst Chart – HS4 → HS6 Breakdown by Country and Year")
-    df['cmdCode'] = df['cmdCode'].astype(str)
-    df['HS4'] = df['cmdCode'].str[:4]
-    df['HS6'] = df['cmdCode'].str[:6]
-    df['value'] = df.get('cifvalue', pd.NA).fillna(df.get('fobvalue', pd.NA))
-    df['reporterDesc'] = df.get('reporterDesc', 'Unknown Country').fillna('Unknown Country')
-    df['flowDesc'] = df.get('flowDesc', '').str.lower()
-    df['countryFlow'] = df['reporterDesc'] + " (" + df['flowDesc'] + ")"
-    df['year'] = pd.to_numeric(df.get('refYear', pd.NA), errors='coerce')
+    # Detect if it's import or export
+    flow_type = df['flowDesc'].iloc[0] if 'flowDesc' in df.columns else 'Unknown'
 
-    years = df['year'].dropna().unique()
-    cols = st.columns(len(years))
-    for idx, year in enumerate(sorted(years)):
-        year_df = df[df['year'] == year]
-        year_df['flow_order'] = year_df['flowDesc'].map({'import': 0, 'export': 1})
-        year_df = year_df.sort_values(by=['flow_order', 'reporterDesc'])
-        grouped = year_df.groupby(['countryFlow', 'HS4', 'HS6'])[metric].sum().reset_index()
-        if level == 'HS4':
-            grouped = grouped.groupby(['countryFlow', 'HS4'])[metric].sum().reset_index()
-            fig = px.sunburst(grouped, path=['countryFlow', 'HS4'], values=metric, color='countryFlow', title=f"{int(year)} ({'USD' if metric == 'value' else 'kg'})")
-        elif level == 'HS6':
-            fig = px.sunburst(grouped, path=['countryFlow', 'HS4', 'HS6'], values=metric, color='countryFlow', title=f"{int(year)} ({'USD' if metric == 'value' else 'kg'})")
-        fig = px.sunburst(
-            grouped,
-            path=['countryFlow', 'HS4', 'HS6'],
-            values=metric,
-            color='countryFlow',
-            title=f"{int(year)} ({'USD' if metric == 'value' else 'kg'})"
-        )
-        fig.update_traces(insidetextorientation='radial')
-        with cols[idx]:
-            st.plotly_chart(fig, use_container_width=True)
+    # User HS level selection
+    hs_level = st.radio("Choose HS Code Level:", options=["HS4", "HS6"])
 
-def render_combined_stacked_bar(df, metric):
-    level = st.radio("Select HS Level for Bar Charts", options=["HS4", "HS6"], horizontal=True)
-    df['HS6'] = df['cmdCode'].str[:6]
-    st.markdown("### 📊 Combined Absolute Stacked Bar Chart – HS4 Value by Flow and Year")
-    df['cmdCode'] = df['cmdCode'].astype(str)
-    df['HS4'] = df['cmdCode'].str[:4]
-    df['value'] = df.get('cifvalue', pd.NA).fillna(df.get('fobvalue', pd.NA))
-    df['reporterDesc'] = df.get('reporterDesc', 'Unknown Country').fillna('Unknown Country')
-    df['flowDesc'] = df.get('flowDesc', '').str.lower()
-    df['countryFlow'] = df['reporterDesc'] + " (" + df['flowDesc'] + ")"
-    df['year'] = pd.to_numeric(df.get('refYear', pd.NA), errors='coerce')
-    df = df[df[level].str.len() == (4 if level == 'HS4' else 6)]
+    hs_col = 'cmdCode'
+    if hs_level == "HS4":
+        df['hs_selected'] = df['cmdCode'].astype(str).str[:4]
+    else:
+        df['hs_selected'] = df['cmdCode'].astype(str).str[:6]
 
-    grouped = df.groupby(['year', 'flowDesc', level])[metric].sum().reset_index()
-    grouped['year_flow'] = grouped['year'].astype(str) + " / " + grouped['flowDesc'].str.capitalize()
+    df['period'] = df['period'].astype(str)
+    df['year'] = df['period'].str[:4]
 
-    if not grouped.empty:
-        fig = px.bar(
-            grouped,
-            x='year_flow',
-            y=metric,
-            color=level,
-            title="HS4 Value by Flow and Year",
-            labels={metric: metric, level: level + ' Code'},
-            text_auto='.2s'
-        )
-        fig.update_layout(barmode='stack', xaxis_title="Year – Flow", yaxis_title=f"{metric} ({'USD' if metric == 'value' else 'kg'})", showlegend=True)
-        st.plotly_chart(fig, use_container_width=True)
+    group_cols = ['year', 'hs_selected']
+    value_cols = ['netWgt', 'cifvalue', 'fobvalue']
+    existing_value_cols = [col for col in value_cols if col in df.columns]
 
-    
+    # Aggregate data
+    agg_df = df.groupby(group_cols)[existing_value_cols].sum().reset_index()
 
-    st.markdown("### 📊 Combined Percentage Stacked Bar Chart – HS4 Share by Year")
-    grouped = df.groupby(['year', 'flowDesc', 'HS4'])[metric].sum().reset_index()
-    grouped['year_flow'] = grouped['year'].astype(str) + " – " + grouped['flowDesc'].str.capitalize()
+    # Total value for charting
+    agg_df['value'] = agg_df[existing_value_cols[0]]
 
-    pivot = grouped.pivot(index='year_flow', columns=level, values=metric).fillna(0)
-    percent_df = pivot.div(pivot.sum(axis=1), axis=0).reset_index().melt(id_vars='year_flow', var_name='HS4', value_name='percentage')
-    percent_df['percentage'] *= 100
+    # Pivot for stacked bar chart
+    pivot_df = agg_df.pivot_table(index='year', columns='hs_selected', values='value', aggfunc='sum').fillna(0)
 
-    if not percent_df.empty:
-        fig = px.bar(
-            percent_df,
-            x='year_flow',
-            y='percentage',
-            color='HS4',
-            title="HS4 Share by Flow and Year",
-            labels={'percentage': 'Percentage (%)', level: level + ' Code'},
-            text_auto='.1f'
-        )
-        fig.update_layout(barmode='stack', xaxis_title="Year – Flow", yaxis_title="Percentage (%)", showlegend=True)
-        st.plotly_chart(fig, use_container_width=True)
-    
+    # Absolute values
+    st.markdown("### 📊 Yearly Absolute Bar Chart – HS Code Breakdown")
+    abs_chart = px.bar(
+        pivot_df,
+        x=pivot_df.index,
+        y=pivot_df.columns,
+        labels={'value': 'Value', 'year': 'Year'},
+        title=f"{flow_type} Value by {hs_level} – Absolute"
+    )
+    st.plotly_chart(abs_chart, use_container_width=True)
 
-    
+    # Percent stacked bar
+    st.markdown("### 📊 Yearly Percentage Stacked Bar Charts – HS Code Share")
+    pct_df = pivot_df.div(pivot_df.sum(axis=1), axis=0) * 100
+    pct_chart = px.bar(
+        pct_df,
+        x=pct_df.index,
+        y=pct_df.columns,
+        labels={'value': 'Percentage', 'year': 'Year'},
+        title=f"{flow_type} Share by {hs_level} – Percentage",
+    )
+    st.plotly_chart(pct_chart, use_container_width=True)
 
-
-if uploaded_files:
-    all_data = []
-    for file in uploaded_files:
-        try:
-            df = pd.read_csv(file)
-            all_data.append(df)
-        except Exception as e:
-            st.error(f"Error processing {file.name}: {e}")
-
-    if all_data:
-        combined_df = pd.concat(all_data, ignore_index=True)
-
-        combined_df['cmdCode'] = combined_df['cmdCode'].astype(str)
-        combined_df['HS2'] = combined_df['cmdCode'].str[:2]
-        combined_df['HS4'] = combined_df['cmdCode'].str[:4]
-
-        hs2_options = sorted(combined_df['HS2'].unique())
-        selected_hs2 = st.multiselect("Select HS2 Codes", options=hs2_options, default=hs2_options)
-
-        filtered_df = combined_df[combined_df['HS2'].isin(selected_hs2)]
-
-        hs4_options = sorted([code for code in filtered_df['HS4'].unique() if len(code) == 4 and not code[:2] == code])
-        selected_hs4 = st.multiselect("Select HS4 Codes (within selected HS2s)", options=hs4_options, default=hs4_options)
-
-        hs6_candidates = filtered_df[filtered_df['HS4'].isin(selected_hs4)]['cmdCode'].str[:6].unique()
-        hs6_options = sorted([code for code in hs6_candidates if code[:4] != code and code[:2] != code])
-        selected_hs6 = st.multiselect("Select HS6 Codes (within selected HS4s)", options=hs6_options, default=hs6_options)
-
-        final_df = filtered_df[(filtered_df['HS4'].isin(selected_hs4)) & (filtered_df['cmdCode'].str[:6].isin(selected_hs6))]
-        render_combined_sunburst(final_df, metric)
-        render_combined_stacked_bar(final_df, metric)
+    # Add contextual info
+    st.markdown("---")
+    st.markdown(f"**Flow Type:** {flow_type}")
+    importing = df['rtTitle'].iloc[0] if 'rtTitle' in df.columns else 'N/A'
+    exporting = df['ptTitle'].iloc[0] if 'ptTitle' in df.columns else 'N/A'
+    st.markdown(f"**Importing Country:** {importing} | **Exporting Country:** {exporting}")
+    st.markdown(f"**HS Level Selected:** {hs_level}")
