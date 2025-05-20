@@ -112,6 +112,9 @@ if uploaded_files:
         hs4_options = sorted(filtered_df['HS4'].unique())
         selected_hs4 = st.multiselect("Select HS4 Codes (within selected HS2s)", options=hs4_options, default=hs4_options)
 
-        final_df = filtered_df[filtered_df['HS4'].isin(selected_hs4)]
+        hs6_options = sorted(filtered_df[filtered_df['HS4'].isin(selected_hs4)]['cmdCode'].str[:6].unique())
+        selected_hs6 = st.multiselect("Select HS6 Codes (within selected HS4s)", options=hs6_options, default=hs6_options)
+
+        final_df = filtered_df[(filtered_df['HS4'].isin(selected_hs4)) & (filtered_df['cmdCode'].str[:6].isin(selected_hs6))]
         render_combined_sunburst(final_df, metric)
         render_combined_stacked_bar(final_df, metric)
