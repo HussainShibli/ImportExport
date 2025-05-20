@@ -42,7 +42,7 @@ def render_yearly_import_export_bars(df, metric):
     st.markdown("### 📊 Yearly Import and Export Totals")
     df['value'] = df.get('cifvalue', pd.NA).fillna(df.get('fobvalue', pd.NA))
     df['flowDesc'] = df.get('flowDesc', '').str.lower()
-    df['year'] = pd.to_datetime(df.get('periodDesc', pd.NA), errors='coerce').dt.year
+    df['year'] = pd.to_numeric(df.get('refYear', pd.NA), errors='coerce')
     grouped = df.groupby(['year', 'flowDesc'])[metric].sum().reset_index()
 
     fig = px.bar(
