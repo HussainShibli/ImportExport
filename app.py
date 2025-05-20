@@ -23,8 +23,8 @@ def render_combined_sunburst(df, metric):
     df['year'] = pd.to_numeric(df.get('refYear', pd.NA), errors='coerce')
 
     years = df['year'].dropna().unique()
-    for year in sorted(years):
-        st.markdown(f"#### Year: {int(year)}")
+    cols = st.columns(len(years))
+    for idx, year in enumerate(sorted(years)):
         year_df = df[df['year'] == year]
         grouped = year_df.groupby(['countryFlow', 'HS4', 'HS6'])[metric].sum().reset_index()
         fig = px.sunburst(
@@ -32,10 +32,11 @@ def render_combined_sunburst(df, metric):
             path=['countryFlow', 'HS4', 'HS6'],
             values=metric,
             color='countryFlow',
-            title=f"Sunburst – {int(year)} ({'USD' if metric == 'value' else 'kg'})"
+            title=f"{int(year)} ({'USD' if metric == 'value' else 'kg'})"
         )
         fig.update_traces(insidetextorientation='radial')
-        st.plotly_chart(fig, use_container_width=True)
+        with cols[idx]:
+            st.plotly_chart(fig, use_container_width=True)
 
 def render_combined_stacked_bar(df, metric):
     st.markdown("### 📊 Percentage Stacked Bar Chart – HS4 Share within Each Country")
