@@ -12,7 +12,7 @@ uploaded_files = st.file_uploader("Upload your CSV file(s)", type=["csv"], accep
 # User options
 hs_level = st.selectbox("Select HS Level", ["HS2", "HS4", "HS6"])
 metric = st.selectbox("Select Metric", ["value", "netWgt"])
-chart_type = st.selectbox("Select Chart Type", ["Grouped", "Stacked", "Diverging", "Faceted"])
+chart_type = st.selectbox("Select Chart Type", ["Grouped", "Stacked", "Diverging", "Faceted", "Sunburst Hierarchy"])
 
 def process_and_visualize(df, filename):
     st.subheader(f"📁 {filename}")
@@ -130,6 +130,26 @@ def process_and_visualize(df, filename):
             for ax in g.axes.flatten():
                 ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
             st.pyplot(g)
+
+        elif chart_type == "Sunburst Hierarchy":
+            sunburst_df = df.copy()
+            sunburst_df['value'] = df.get('cifvalue', pd.NA).fillna(df.get('fobvalue', pd.NA))
+            sunburst_df['HS2'] = sunburst_df['cmdCode'].astype(str).str[:2]
+            sunburst_df['HS4'] = sunburst_df['cmdCode'].astype(str).str[:4]
+
+            grouped = sunburst_df.groupby(['flowDesc', 'HS2', 'HS4'])['value'].sum().reset_index()
+
+            import plotly.express as px
+            fig = px.sunburst(
+                grouped,
+                path=['flowDesc', 'HS2', 'HS4'],
+                values='value',
+                title=f"Sunburst of {filename} – Import/Export by HS2 → HS4",
+                color='flowDesc'
+            )
+            fig.update_traces(insidetextorientation='radial')
+            st.plotly_chart(fig, use_container_width=True)
+
 
 # Process each file
 if uploaded_files:
