@@ -12,7 +12,7 @@ metric = st.selectbox("Select Metric", ["value", "netWgt"])
 
 
 def render_combined_sunburst(df, metric):
-    st.markdown("### 🌐 Sunburst Chart – HS4 → HS6 Breakdown by Country")
+    st.markdown("### 🌐 Sunburst Chart – HS4 → HS6 Breakdown by Country and Year")
     df['cmdCode'] = df['cmdCode'].astype(str)
     df['HS4'] = df['cmdCode'].str[:4]
     df['HS6'] = df['cmdCode'].str[:6]
@@ -20,18 +20,22 @@ def render_combined_sunburst(df, metric):
     df['reporterDesc'] = df.get('reporterDesc', 'Unknown Country').fillna('Unknown Country')
     df['flowDesc'] = df.get('flowDesc', '').str.lower()
     df['countryFlow'] = df['reporterDesc'] + " (" + df['flowDesc'] + ")"
+    df['year'] = pd.to_numeric(df.get('refYear', pd.NA), errors='coerce')
 
-    grouped = df.groupby(['countryFlow', 'HS4', 'HS6'])[metric].sum().reset_index()
-
-    fig = px.sunburst(
-        grouped,
-        path=['countryFlow', 'HS4', 'HS6'],
-        values=metric,
-        color='countryFlow',
-        title=f"Combined Sunburst – HS4 to HS6 by Country ({'USD' if metric == 'value' else 'kg'})"
-    )
-    fig.update_traces(insidetextorientation='radial')
-    st.plotly_chart(fig, use_container_width=True)
+    years = df['year'].dropna().unique()
+    for year in sorted(years):
+        st.markdown(f"#### Year: {int(year)}")
+        year_df = df[df['year'] == year]
+        grouped = year_df.groupby(['countryFlow', 'HS4', 'HS6'])[metric].sum().reset_index()
+        fig = px.sunburst(
+            grouped,
+            path=['countryFlow', 'HS4', 'HS6'],
+            values=metric,
+            color='countryFlow',
+            title=f"Sunburst – {int(year)} ({'USD' if metric == 'value' else 'kg'})"
+        )
+        fig.update_traces(insidetextorientation='radial')
+        st.plotly_chart(fig, use_container_width=True)
 
 def render_combined_stacked_bar(df, metric):
     st.markdown("### 📊 Percentage Stacked Bar Chart – HS4 Share within Each Country")
