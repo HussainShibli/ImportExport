@@ -91,26 +91,7 @@ def render_combined_stacked_bar(df, metric):
         )
         fig.update_layout(barmode='stack', xaxis_title="Year – Flow", yaxis_title="Percentage (%)", showlegend=True)
         st.plotly_chart(fig, use_container_width=True)
-    return
-        year_df = df[df['year'] == year]
-        grouped = year_df.groupby(['countryFlow', 'HS4'])[metric].sum().reset_index()
-        pivot = grouped.pivot(index='countryFlow', columns='HS4', values=metric).fillna(0)
-        percent_df = pivot.div(pivot.sum(axis=1), axis=0).reset_index().melt(id_vars='countryFlow', var_name='HS4', value_name='percentage')
-        percent_df['percentage'] *= 100
-
-        if not percent_df.empty:
-            fig = px.bar(
-                percent_df,
-                x='countryFlow',
-                y='percentage',
-                color='HS4',
-                title=f"HS4 Share – {int(year)}",
-                labels={'percentage': 'Percentage (%)', 'HS4': 'HS4 Code'},
-                text_auto='.1f'
-            )
-            fig.update_layout(barmode='stack', xaxis_title="Country (Flow)", yaxis_title="Percentage (%)", showlegend=True))
-            with cols[idx]:
-                st.plotly_chart(fig, use_container_width=True)
+    
 
     
 
