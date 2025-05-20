@@ -12,10 +12,11 @@ uploaded_files = st.file_uploader("Upload your CSV file(s)", type=["csv"], accep
 # User options
 hs_level = st.selectbox("Select HS Level", ["HS2", "HS4", "HS6"])
 metric = st.selectbox("Select Metric", ["value", "netWgt"])
-chart_type = st.selectbox("Select Chart Type", ["Grouped", "Stacked", "Diverging", "Faceted", "Sunburst Hierarchy"])
+chart_type = st.selectbox("Select Chart Type", ["Stacked Bar Chart (Unified Flows)", "Sunburst Hierarchy"])
 
 def process_and_visualize(df, filename):
     st.subheader(f"📁 {filename}")
+    st.write("Detected columns:", df.columns.tolist())
 
     # Auto-map columns
     col_map = {}
@@ -42,116 +43,57 @@ def process_and_visualize(df, filename):
         st.error(f"Missing required columns: {', '.join(missing)}. Skipping file.")
         return
 
-    # Rename columns
+    # Rename and clean
     df = df.rename(columns={v: k for k, v in col_map.items()})
     df = df.loc[:, ~df.columns.duplicated()]
-
-    # Year already present as int
     df['year'] = pd.to_numeric(df['year'], errors='coerce')
-
-    # Handle value column
     df['value'] = df.get('cifvalue', pd.NA).fillna(df.get('fobvalue', pd.NA))
-
-    try:
-        if isinstance(df['cmdCode'], pd.Series):
-            df['cmdCode'] = df['cmdCode'].astype(str)
-            df['HS2'] = df['cmdCode'].str[:2]
-            df['HS4'] = df['cmdCode'].str[:4]
-            df['HS6'] = df['cmdCode'].str[:6]
-        else:
-            st.error(f"'cmdCode' is not a valid Series. Found: {type(df['cmdCode'])}")
-            return
-    except Exception as e:
-        st.error(f"Error processing HS code levels: {e}")
-        return
-
+    df['cmdCode'] = df['cmdCode'].astype(str)
+    df['HS2'] = df['cmdCode'].str[:2]
+    df['HS4'] = df['cmdCode'].str[:4]
     df['flowDesc'] = df['flowDesc'].str.lower()
 
-    # Group
-    try:
-        grouped = df.groupby([hs_level, 'year', 'flowDesc', 'partnerDesc'])[metric].sum().reset_index()
-    except Exception as e:
-        st.error(f"Failed to group data: {e}")
+    # Ask for HS2 filter
+    available_hs2 = df['HS2'].unique()
+    selected_hs2 = st.multiselect(f"Select HS2 codes from {filename}:", available_hs2, default=available_hs2[:5])
+    df = df[df['HS2'].isin(selected_hs2)]
+
+    if df.empty:
+        st.warning("No data available after filtering HS2 codes.")
         return
 
-    # HS code filter
-    available_codes = grouped[hs_level].unique()
-    selected_codes = st.multiselect(f"Select {hs_level} codes from {filename}:", available_codes, default=available_codes[:3])
+    # CHART TYPE 1 — Stacked Bar Chart with Unified Import/Export
+    if chart_type.startswith("Stacked"):
+        df['HS_label'] = df['HS2'] + " → " + df['HS4']
+        grouped = df.groupby(['HS_label', 'flowDesc'])[metric].sum().reset_index()
+        pivot = grouped.pivot_table(index='HS_label', columns='flowDesc', values=metric, aggfunc='sum').fillna(0)
+        pivot = pivot.sort_index()
 
-    for code in selected_codes:
-        subset = grouped[grouped[hs_level] == code]
-        title = f"{hs_level} {code} – {metric} by country and flow"
-        st.markdown(f"#### 📊 {title}")
+        fig, ax = plt.subplots(figsize=(14, 7))
+        pivot.plot(kind='bar', stacked=True, ax=ax)
+        ax.set_title(f"{metric} by HS2 → HS4 (Import & Export Combined)", fontsize=14)
+        ax.set_ylabel(metric)
+        ax.set_xlabel("HS2 → HS4 Code")
+        ax.legend(title="Flow")
+        plt.xticks(rotation=45, ha="right")
+        st.pyplot(fig)
 
-        if subset.empty:
-            st.warning(f"No data available for {hs_level} {code}")
-            continue
+    # CHART TYPE 2 — Sunburst Chart for HS2 > HS4 + Flow
+    elif chart_type.startswith("Sunburst"):
+        import plotly.express as px
 
-        if chart_type == "Grouped":
-            fig, ax = plt.subplots(figsize=(12, 6))
-            sns.barplot(data=subset, x='partnerDesc', y=metric, hue='flowDesc', ax=ax)
-            ax.set_title(title)
-            ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
-            st.pyplot(fig)
+        grouped = df.groupby(['flowDesc', 'HS2', 'HS4'])[metric].sum().reset_index()
+        fig = px.sunburst(
+            grouped,
+            path=['flowDesc', 'HS2', 'HS4'],
+            values=metric,
+            title=f"Sunburst of {filename} – Flow → HS2 → HS4",
+            color='flowDesc'
+        )
+        fig.update_traces(insidetextorientation='radial')
+        st.plotly_chart(fig, use_container_width=True)
 
-        elif chart_type == "Stacked":
-            pivot = subset.pivot_table(index='partnerDesc', columns='flowDesc', values=metric, aggfunc='sum').fillna(0)
-            fig, ax = plt.subplots(figsize=(12, 6))
-            pivot.plot(kind='bar', stacked=True, ax=ax)
-            ax.set_title(title)
-            ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
-            st.pyplot(fig)
-
-        elif chart_type == "Diverging":
-            diverging = subset.copy()
-            diverging[metric] = diverging.apply(lambda row: -row[metric] if row['flowDesc'] == 'import' else row[metric], axis=1)
-            fig, ax = plt.subplots(figsize=(12, 6))
-            sns.barplot(data=diverging, x='partnerDesc', y=metric, hue='flowDesc', ax=ax)
-            ax.axhline(0, color='black', linewidth=1)
-            ax.set_title(title)
-            ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
-            st.pyplot(fig)
-
-        elif chart_type == "Faceted":
-            g = sns.catplot(
-                data=subset,
-                x='partnerDesc',
-                y=metric,
-                hue='flowDesc',
-                col='year',
-                kind='bar',
-                col_wrap=3,
-                height=4,
-                aspect=1.5,
-                sharey=False
-            )
-            g.set_titles(col_template="Year: {col_name}")
-            g.fig.suptitle(title, y=1.02)
-            for ax in g.axes.flatten():
-                ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
-            st.pyplot(g)
-
-        elif chart_type == "Sunburst Hierarchy":
-            sunburst_df = df.copy()
-            sunburst_df['value'] = df.get('cifvalue', pd.NA).fillna(df.get('fobvalue', pd.NA))
-            sunburst_df['HS2'] = sunburst_df['cmdCode'].astype(str).str[:2]
-            sunburst_df['HS4'] = sunburst_df['cmdCode'].astype(str).str[:4]
-
-            grouped = sunburst_df.groupby(['flowDesc', 'HS2', 'HS4'])['value'].sum().reset_index()
-
-            import plotly.express as px
-            fig = px.sunburst(
-                grouped,
-                path=['flowDesc', 'HS2', 'HS4'],
-                values='value',
-                title=f"Sunburst of {filename} – Import/Export by HS2 → HS4",
-                color='flowDesc'
-            )
-            fig.update_traces(insidetextorientation='radial')
-            st.plotly_chart(fig, use_container_width=True)
-
-
-# Process each file
+# Process uploaded files
 if uploaded_files:
     for file in uploaded_files:
         try:
