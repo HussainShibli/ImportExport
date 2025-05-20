@@ -16,14 +16,11 @@ def render_sunbursts_by_year(df, metric):
     df['cmdCode'] = df['cmdCode'].astype(str)
     df['HS4'] = df['cmdCode'].str[:4]
     df['HS6'] = df['cmdCode'].str[:6]
-    df['flowDesc'] = df['flowDesc'].str.lower()
+    df['flowDesc'] = df.get('flowDesc', '').str.lower()
     df['value'] = df.get('cifvalue', pd.NA).fillna(df.get('fobvalue', pd.NA))
     df['reporterDesc'] = df.get('reporterDesc', 'Unknown Country').fillna('Unknown Country')
     df['countryFlow'] = df['reporterDesc'] + " (" + df['flowDesc'] + ")"
-    if 'periodDesc' in df.columns:
-        df['year'] = pd.to_datetime(df['periodDesc'], errors='coerce').dt.year
-    else:
-        df['year'] = pd.NA
+    df['year'] = pd.to_numeric(df.get('refYear', pd.NA), errors='coerce')
 
     years = df['year'].dropna().unique()
     for year in sorted(years):
@@ -44,8 +41,8 @@ def render_sunbursts_by_year(df, metric):
 def render_yearly_import_export_bars(df, metric):
     st.markdown("### 📊 Yearly Import and Export Totals")
     df['value'] = df.get('cifvalue', pd.NA).fillna(df.get('fobvalue', pd.NA))
-    df['flowDesc'] = df['flowDesc'].str.lower()
-    df['year'] = pd.to_datetime(df['periodDesc'], errors='coerce').dt.year
+    df['flowDesc'] = df.get('flowDesc', '').str.lower()
+    df['year'] = pd.to_datetime(df.get('periodDesc', pd.NA), errors='coerce').dt.year
     grouped = df.groupby(['year', 'flowDesc'])[metric].sum().reset_index()
 
     fig = px.bar(
