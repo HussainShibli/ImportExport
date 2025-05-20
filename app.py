@@ -48,6 +48,9 @@ def render_combined_hs4_stacked_bar(df, metric):
 
     df['countryFlow'] = df['reporterDesc'] + " (" + df['flowDesc'] + ")"
 
+    # Remove rows where HS4 is not exactly 4 digits
+    df = df[df['HS4'].str.len() == 4]
+
     grouped = df.groupby(['countryFlow', 'HS4'])[metric].sum().reset_index()
 
     if not grouped.empty:
