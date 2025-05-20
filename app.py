@@ -49,9 +49,14 @@ def process_and_visualize(df, filename):
     df = df.rename(columns={v: k for k, v in col_map.items()})
     
     df['year'] = pd.to_datetime(df['periodDesc'], errors='coerce').dt.year
-    df['HS2'] = df['cmdCode'].astype(str).str[:2]
-    df['HS4'] = df['cmdCode'].astype(str).str[:4]
-    df['HS6'] = df['cmdCode'].astype(str).str[:6]
+    if 'cmdCode' in df.columns:
+    df['cmdCode'] = df['cmdCode'].astype(str)
+    df['HS2'] = df['cmdCode'].str[:2]
+    df['HS4'] = df['cmdCode'].str[:4]
+    df['HS6'] = df['cmdCode'].str[:6]
+else:
+    st.error("Missing 'cmdCode' column after renaming. Please check your file.")
+    return
     df['flowDesc'] = df['flowDesc'].str.lower()
     df['value'] = df.get('cifvalue', pd.NA).fillna(df.get('fobvalue', pd.NA))
 
