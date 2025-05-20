@@ -21,22 +21,22 @@ def process_and_visualize(df, filename):
     col_map = {}
     for col in df.columns:
         cl = col.lower()
-        if 'cmd' in cl or 'hs' in cl:
+        if 'cmd' in cl:
             col_map['cmdCode'] = col
-        elif 'partner' in cl or 'country' in cl:
+        elif 'partnerdesc' in cl:
             col_map['partnerDesc'] = col
-        elif 'flow' in cl:
+        elif 'flowdesc' in cl:
             col_map['flowDesc'] = col
         elif 'cif' in cl:
             col_map['cifvalue'] = col
         elif 'fob' in cl:
             col_map['fobvalue'] = col
-        elif 'wgt' in cl or 'weight' in cl:
+        elif 'wgt' in cl and 'net' in cl:
             col_map['netWgt'] = col
-        elif 'period' in cl or 'date' in cl:
-            col_map['periodDesc'] = col
+        elif 'refyear' in cl:
+            col_map['year'] = col
 
-    required = ['cmdCode', 'partnerDesc', 'flowDesc', 'netWgt', 'periodDesc']
+    required = ['cmdCode', 'partnerDesc', 'flowDesc', 'netWgt', 'year']
     missing = [req for req in required if req not in col_map]
     if missing:
         st.error(f"Missing required columns: {', '.join(missing)}. Skipping file.")
@@ -44,27 +44,23 @@ def process_and_visualize(df, filename):
 
     # Rename columns
     df = df.rename(columns={v: k for k, v in col_map.items()})
+    df = df.loc[:, ~df.columns.duplicated()]
 
-    # Convert periodDesc to year
-    try:
-        df['year'] = pd.to_datetime(df['periodDesc'], errors='coerce').dt.year
-    except Exception as e:
-        st.error(f"Failed to parse 'periodDesc' column into years: {e}")
-        return
+    # Year already present as int
+    df['year'] = pd.to_numeric(df['year'], errors='coerce')
 
     # Handle value column
     df['value'] = df.get('cifvalue', pd.NA).fillna(df.get('fobvalue', pd.NA))
 
-    # Validate cmdCode
-    if 'cmdCode' not in df.columns:
-        st.error("Missing 'cmdCode' column after renaming. Cannot extract HS codes.")
-        return
-
     try:
-        df['cmdCode'] = df['cmdCode'].astype(str)
-        df['HS2'] = df['cmdCode'].str[:2]
-        df['HS4'] = df['cmdCode'].str[:4]
-        df['HS6'] = df['cmdCode'].str[:6]
+        if isinstance(df['cmdCode'], pd.Series):
+            df['cmdCode'] = df['cmdCode'].astype(str)
+            df['HS2'] = df['cmdCode'].str[:2]
+            df['HS4'] = df['cmdCode'].str[:4]
+            df['HS6'] = df['cmdCode'].str[:6]
+        else:
+            st.error(f"'cmdCode' is not a valid Series. Found: {type(df['cmdCode'])}")
+            return
     except Exception as e:
         st.error(f"Error processing HS code levels: {e}")
         return
@@ -85,7 +81,6 @@ def process_and_visualize(df, filename):
     for code in selected_codes:
         subset = grouped[grouped[hs_level] == code]
         title = f"{hs_level} {code} – {metric} by country and flow"
-
         st.markdown(f"#### 📊 {title}")
 
         if subset.empty:
