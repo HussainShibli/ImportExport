@@ -48,7 +48,6 @@ def render_combined_hs4_stacked_bar(df, metric):
 
     df['countryFlow'] = df['reporterDesc'] + " (" + df['flowDesc'] + ")"
 
-    # Remove rows where HS4 is not exactly 4 digits
     df = df[df['HS4'].str.len() == 4]
 
     grouped = df.groupby(['countryFlow', 'HS4'])[metric].sum().reset_index()
@@ -67,6 +66,38 @@ def render_combined_hs4_stacked_bar(df, metric):
         st.plotly_chart(fig, use_container_width=True)
 
 
+def render_percentage_stacked_bar(df, metric):
+    st.markdown("### 📊 Percentage Stacked Bar Chart – HS4 Share within Each Country")
+
+    df['cmdCode'] = df['cmdCode'].astype(str)
+    df['HS4'] = df['cmdCode'].str[:4]
+    df['value'] = df.get('cifvalue', pd.NA).fillna(df.get('fobvalue', pd.NA))
+
+    df['reporterDesc'] = df.get('reporterDesc', 'Unknown Country').fillna('Unknown Country')
+    df['flowDesc'] = df['flowDesc'].str.lower()
+    df['countryFlow'] = df['reporterDesc'] + " (" + df['flowDesc'] + ")"
+
+    df = df[df['HS4'].str.len() == 4]
+    grouped = df.groupby(['countryFlow', 'HS4'])[metric].sum().reset_index()
+
+    pivot = grouped.pivot_table(index='countryFlow', columns='HS4', values=metric, aggfunc='sum').fillna(0)
+    percentage_df = pivot.div(pivot.sum(axis=1), axis=0).reset_index().melt(id_vars='countryFlow', var_name='HS4', value_name='percentage')
+    percentage_df['percentage'] *= 100
+
+    if not percentage_df.empty:
+        fig = px.bar(
+            percentage_df,
+            x='countryFlow',
+            y='percentage',
+            color='HS4',
+            title="Importing and Exporting Countries – HS4 Composition (Percentage)",
+            labels={'percentage': 'Percentage (%)', 'HS4': 'HS4 Code'},
+            text_auto='.1f'
+        )
+        fig.update_layout(barmode='stack', xaxis_title="Country (Flow)", yaxis_title="Percentage (%)")
+        st.plotly_chart(fig, use_container_width=True)
+
+
 if uploaded_files:
     all_data = []
     for file in uploaded_files:
@@ -80,3 +111,4 @@ if uploaded_files:
         combined_df = pd.concat(all_data, ignore_index=True)
         render_combined_sunburst_chart(combined_df, metric)
         render_combined_hs4_stacked_bar(combined_df, metric)
+        render_percentage_stacked_bar(combined_df, metric)
