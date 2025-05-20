@@ -9,6 +9,7 @@ st.markdown("Upload one or more CSV files containing HS-level trade data. This t
 uploaded_files = st.file_uploader("Upload your CSV file(s)", type=["csv"], accept_multiple_files=True)
 
 metric = st.selectbox("Select Metric", ["value", "netWgt"])
+level = st.radio("Select HS Level for Bar Charts", options=["HS4", "HS6"], horizontal=True)
 
 
 def render_combined_sunburst_chart(all_data, metric):
@@ -36,33 +37,44 @@ def render_combined_sunburst_chart(all_data, metric):
     st.plotly_chart(fig, use_container_width=True)
 
 
-def render_combined_hs4_stacked_bar(df, metric):
-    st.markdown("### 📊 Combined Stacked Bar Chart – HS4 Breakdown for Importing and Exporting Countries")
+def render_bar_charts(df, metric, level):
+    st.markdown(f"### 📊 Combined Stacked Bar Chart – {level} Breakdown for Importing and Exporting Countries")
 
     df['cmdCode'] = df['cmdCode'].astype(str)
     df['HS4'] = df['cmdCode'].str[:4]
+    df['HS6'] = df['cmdCode'].str[:6]
     df['value'] = df.get('cifvalue', pd.NA).fillna(df.get('fobvalue', pd.NA))
 
     df['reporterDesc'] = df.get('reporterDesc', 'Unknown Country').fillna('Unknown Country')
     df['flowDesc'] = df['flowDesc'].str.lower()
-
     df['countryFlow'] = df['reporterDesc'] + " (" + df['flowDesc'] + ")"
 
-    df = df[df['HS4'].str.len() == 4]
-
-    grouped = df.groupby(['countryFlow', 'HS4'])[metric].sum().reset_index()
+    if level == "HS4":
+        df = df[df['HS4'].str.len() == 4]
+        selected = st.multiselect("Select HS4 Codes to Display", options=sorted(df['HS4'].unique()), default=[])
+        if selected:
+            df = df[df['HS4'].isin(selected)]
+        grouped = df.groupby(['countryFlow', 'HS4'])[metric].sum().reset_index()
+        color_col = 'HS4'
+    else:
+        df = df[df['HS6'].str.len() == 6]
+        selected_hs4 = st.multiselect("Select HS4 Codes to View HS6 Within", options=sorted(df['HS4'].unique()), default=[])
+        if selected_hs4:
+            df = df[df['HS4'].isin(selected_hs4)]
+        grouped = df.groupby(['countryFlow', 'HS6'])[metric].sum().reset_index()
+        color_col = 'HS6'
 
     if not grouped.empty:
         fig = px.bar(
             grouped,
             x='countryFlow',
             y=metric,
-            color='HS4',
-            title=f"Importing and Exporting Countries – HS4 Composition ({metric})",
-            labels={'value': metric, 'HS4': 'HS4 Code'},
+            color=color_col,
+            title=f"Importing and Exporting Countries – {level} Composition ({'USD' if metric == 'value' else 'kg'})",
+            labels={'value': metric, color_col: f'{level} Code'},
             text_auto='.2s'
         )
-        fig.update_layout(barmode='stack', xaxis_title="Country (Flow)", yaxis_title=metric)
+        fig.update_layout(barmode='stack', xaxis_title="Country (Flow)", yaxis_title=f"{metric} ({'USD' if metric == 'value' else 'kg'})")
         st.plotly_chart(fig, use_container_width=True)
 
 
@@ -110,5 +122,5 @@ if uploaded_files:
     if all_data:
         combined_df = pd.concat(all_data, ignore_index=True)
         render_combined_sunburst_chart(combined_df, metric)
-        render_combined_hs4_stacked_bar(combined_df, metric)
+        render_bar_charts(combined_df, metric, level)
         render_percentage_stacked_bar(combined_df, metric)
