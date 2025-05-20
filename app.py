@@ -20,14 +20,21 @@ def render_combined_sunburst_chart(all_data, metric):
     all_data['flowDesc'] = all_data['flowDesc'].str.lower()
     all_data['value'] = all_data.get('cifvalue', pd.NA).fillna(all_data.get('fobvalue', pd.NA))
 
-    grouped = all_data.groupby(['flowDesc', 'HS2', 'HS4', 'HS6'])[metric].sum().reset_index()
+    # Determine reporter country from each file
+    all_data['reporterDesc'] = all_data.get('reporterDesc', 'Unknown Country')
+    all_data['reporterDesc'] = all_data['reporterDesc'].fillna('Unknown Country')
+
+    # Combine country and flow for root label
+    all_data['countryFlow'] = all_data['reporterDesc'] + " (" + all_data['flowDesc'] + ")"
+
+    grouped = all_data.groupby(['countryFlow', 'HS2', 'HS4', 'HS6'])[metric].sum().reset_index()
 
     fig = px.sunburst(
         grouped,
-        path=['flowDesc', 'HS2', 'HS4', 'HS6'],
+        path=['countryFlow', 'HS2', 'HS4', 'HS6'],
         values=metric,
-        title="🌐 Combined Sunburst Chart – Import & Export by HS2 → HS4 → HS6",
-        color='flowDesc'
+        title="🌐 Combined Sunburst Chart – Import & Export by HS2 → HS4 → HS6 (by Country)",
+        color='countryFlow'
     )
     fig.update_traces(insidetextorientation='radial')
     st.plotly_chart(fig, use_container_width=True)
