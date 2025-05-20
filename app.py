@@ -4,23 +4,21 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 st.set_page_config(page_title="HS Code Import/Export Analyzer", layout="wide")
-
 st.title("📦 HS Code Import/Export Analyzer")
 st.markdown("Upload one or more CSV files containing HS-level trade data.")
 
 uploaded_files = st.file_uploader("Upload your CSV file(s)", type=["csv"], accept_multiple_files=True)
 
-# Chart config
+# User options
 hs_level = st.selectbox("Select HS Level", ["HS2", "HS4", "HS6"])
 metric = st.selectbox("Select Metric", ["value", "netWgt"])
 chart_type = st.selectbox("Select Chart Type", ["Grouped", "Stacked", "Diverging", "Faceted"])
 
 def process_and_visualize(df, filename):
     st.subheader(f"📁 {filename}")
-
     st.write("Detected columns:", df.columns.tolist())
 
-    # Auto-detect column names
+    # Auto-map columns
     col_map = {}
     for col in df.columns:
         cl = col.lower()
@@ -40,36 +38,60 @@ def process_and_visualize(df, filename):
             col_map['periodDesc'] = col
 
     required = ['cmdCode', 'partnerDesc', 'flowDesc', 'netWgt', 'periodDesc']
-    for req in required:
-        if req not in col_map:
-            st.warning(f"Missing required column: `{req}`. Skipping file.")
-            return
+    missing = [req for req in required if req not in col_map]
+    if missing:
+        st.error(f"Missing required columns: {', '.join(missing)}. Skipping file.")
+        return
 
-    # Rename columns for consistency
+    # Rename columns
     df = df.rename(columns={v: k for k, v in col_map.items()})
-    
-    df['year'] = pd.to_datetime(df['periodDesc'], errors='coerce').dt.year
-    if 'cmdCode' in df.columns:
-    df['cmdCode'] = df['cmdCode'].astype(str)
-    df['HS2'] = df['cmdCode'].str[:2]
-    df['HS4'] = df['cmdCode'].str[:4]
-    df['HS6'] = df['cmdCode'].str[:6]
-else:
-    st.error("Missing 'cmdCode' column after renaming. Please check your file.")
-    return
-    df['flowDesc'] = df['flowDesc'].str.lower()
+
+    # Convert periodDesc to year
+    try:
+        df['year'] = pd.to_datetime(df['periodDesc'], errors='coerce').dt.year
+    except Exception as e:
+        st.error(f"Failed to parse 'periodDesc' column into years: {e}")
+        return
+
+    # Handle value column
     df['value'] = df.get('cifvalue', pd.NA).fillna(df.get('fobvalue', pd.NA))
 
-    grouped = df.groupby([hs_level, 'year', 'flowDesc', 'partnerDesc'])[metric].sum().reset_index()
+    # Validate cmdCode
+    if 'cmdCode' not in df.columns:
+        st.error("Missing 'cmdCode' column after renaming. Cannot extract HS codes.")
+        return
 
+    try:
+        df['cmdCode'] = df['cmdCode'].astype(str)
+        df['HS2'] = df['cmdCode'].str[:2]
+        df['HS4'] = df['cmdCode'].str[:4]
+        df['HS6'] = df['cmdCode'].str[:6]
+    except Exception as e:
+        st.error(f"Error processing HS code levels: {e}")
+        return
+
+    df['flowDesc'] = df['flowDesc'].str.lower()
+
+    # Group
+    try:
+        grouped = df.groupby([hs_level, 'year', 'flowDesc', 'partnerDesc'])[metric].sum().reset_index()
+    except Exception as e:
+        st.error(f"Failed to group data: {e}")
+        return
+
+    # HS code filter
     available_codes = grouped[hs_level].unique()
-    selected_codes = st.multiselect(f"Select {hs_level} codes to visualize from {filename}:", available_codes, default=available_codes[:3])
+    selected_codes = st.multiselect(f"Select {hs_level} codes from {filename}:", available_codes, default=available_codes[:3])
 
     for code in selected_codes:
         subset = grouped[grouped[hs_level] == code]
         title = f"{hs_level} {code} – {metric} by country and flow"
 
         st.markdown(f"#### 📊 {title}")
+
+        if subset.empty:
+            st.warning(f"No data available for {hs_level} {code}")
+            continue
 
         if chart_type == "Grouped":
             fig, ax = plt.subplots(figsize=(12, 6))
@@ -115,6 +137,7 @@ else:
                 ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
             st.pyplot(g)
 
+# Process each file
 if uploaded_files:
     for file in uploaded_files:
         try:
