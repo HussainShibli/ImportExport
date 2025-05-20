@@ -67,21 +67,7 @@ def render_combined_stacked_bar(df, metric):
         fig.update_layout(barmode='stack', xaxis_title="Year – Flow", yaxis_title=f"{metric} ({'USD' if metric == 'value' else 'kg'})", showlegend=True)
         st.plotly_chart(fig, use_container_width=True)
 
-    st.markdown("### 📊 Combined Percentage Stacked Bar Chart – HS4 Share by Year")
-    grouped['year_flow'] = grouped['year'].astype(str) + " – " + grouped['flowDesc'].str.capitalize()
-
-    if not grouped.empty:
-        fig = px.bar(
-            grouped,
-            x='year_flow',
-            y=metric,
-            color='HS4',
-            title="HS4 Value by Flow and Year",
-            labels={metric: metric, 'HS4': 'HS4 Code'},
-            text_auto='.2s'
-        )
-        fig.update_layout(barmode='stack', xaxis_title="Year – Flow", yaxis_title=f"{metric} ({'USD' if metric == 'value' else 'kg'})", showlegend=True)
-        st.plotly_chart(fig, use_container_width=True)
+    
 
     st.markdown("### 📊 Combined Percentage Stacked Bar Chart – HS4 Share by Year")
     grouped = df.groupby(['year', 'flowDesc', 'HS4'])[metric].sum().reset_index()
