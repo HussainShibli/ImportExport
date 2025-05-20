@@ -16,7 +16,6 @@ chart_type = st.selectbox("Select Chart Type", ["Grouped", "Stacked", "Diverging
 
 def process_and_visualize(df, filename):
     st.subheader(f"📁 {filename}")
-    st.write("Detected columns:", df.columns.tolist())
 
     # Auto-map columns
     col_map = {}
