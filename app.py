@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="HS Code Import/Export Analyzer", layout="wide")
 st.title("📦 HS Code Import/Export Analyzer")
@@ -38,30 +37,34 @@ def render_combined_sunburst_chart(all_data, metric):
     st.plotly_chart(fig, use_container_width=True)
 
 
-def render_hs4_share_bar_chart(df, metric):
-    st.markdown("### 📊 Percentage Share of HS4 within HS2 – by Country")
+def render_hs4_stacked_bars(df, metric):
+    st.markdown("### 📊 Stacked HS4 Bar Chart by Country (Import vs Export)")
 
     df['cmdCode'] = df['cmdCode'].astype(str)
-    df['HS2'] = df['cmdCode'].str[:2]
     df['HS4'] = df['cmdCode'].str[:4]
     df['value'] = df.get('cifvalue', pd.NA).fillna(df.get('fobvalue', pd.NA))
 
     df['reporterDesc'] = df.get('reporterDesc', 'Unknown Country').fillna('Unknown Country')
-    grouped = df.groupby(['reporterDesc', 'HS2', 'HS4'])[metric].sum().reset_index()
+    df['flowDesc'] = df['flowDesc'].str.lower()
 
-    pivot = grouped.pivot_table(index=['HS2', 'HS4'], columns='reporterDesc', values=metric, aggfunc='sum').fillna(0)
+    grouped = df.groupby(['reporterDesc', 'flowDesc', 'HS4'])[metric].sum().reset_index()
 
-    percentage_pivot = pivot.groupby(level=0).apply(lambda x: x.div(x.sum(axis=0), axis=1)) * 100
+    for flow in ['import', 'export']:
+        flow_df = grouped[grouped['flowDesc'] == flow]
+        pivot = flow_df.pivot_table(index='reporterDesc', columns='HS4', values=metric, aggfunc='sum').fillna(0)
 
-    for hs2_code in percentage_pivot.index.levels[0]:
-        hs4_subset = percentage_pivot.loc[hs2_code]
-        fig, ax = plt.subplots(figsize=(12, 6))
-        hs4_subset.plot(kind='bar', stacked=True, ax=ax)
-        ax.set_title(f"HS4 Share of Total {metric} within HS2 {hs2_code} – by Country")
-        ax.set_ylabel("Percentage (%)")
-        ax.set_xlabel("HS4 Code")
-        ax.legend(title="Country", bbox_to_anchor=(1.05, 1), loc='upper left')
-        st.pyplot(fig)
+        if not pivot.empty:
+            st.markdown(f"#### {flow.title()}ing Country View")
+            fig = px.bar(
+                pivot,
+                x=pivot.index,
+                y=pivot.columns,
+                title=f"{flow.title()}ing Countries – Stacked by HS4 ({metric})",
+                labels={'value': metric, 'variable': 'HS4 Code'},
+                text_auto='.2s'
+            )
+            fig.update_layout(barmode='stack', xaxis_title="Country", yaxis_title=metric)
+            st.plotly_chart(fig, use_container_width=True)
 
 
 if uploaded_files:
@@ -76,4 +79,4 @@ if uploaded_files:
     if all_data:
         combined_df = pd.concat(all_data, ignore_index=True)
         render_combined_sunburst_chart(combined_df, metric)
-        render_hs4_share_bar_chart(combined_df, metric)
+        render_hs4_stacked_bars(combined_df, metric)
