@@ -2,17 +2,15 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import plotly.express as px
 
 st.set_page_config(page_title="HS Code Import/Export Analyzer", layout="wide")
 st.title("📦 HS Code Import/Export Analyzer")
-st.markdown("Upload one or more CSV files containing HS-level trade data.")
+st.markdown("Upload one or more CSV files containing HS-level trade data. This tool will show Import and Export data by HS2 → HS4 level using multiple visualizations.")
 
 uploaded_files = st.file_uploader("Upload your CSV file(s)", type=["csv"], accept_multiple_files=True)
 
-# User options
-hs_level = st.selectbox("Select HS Level", ["HS2", "HS4", "HS6"])
 metric = st.selectbox("Select Metric", ["value", "netWgt"])
-chart_type = st.selectbox("Select Chart Type", ["Stacked Bar Chart (Unified Flows)", "Sunburst Hierarchy"])
 
 def process_and_visualize(df, filename):
     st.subheader(f"📁 {filename}")
@@ -43,7 +41,7 @@ def process_and_visualize(df, filename):
         st.error(f"Missing required columns: {', '.join(missing)}. Skipping file.")
         return
 
-    # Rename and clean
+    # Rename and prepare data
     df = df.rename(columns={v: k for k, v in col_map.items()})
     df = df.loc[:, ~df.columns.duplicated()]
     df['year'] = pd.to_numeric(df['year'], errors='coerce')
@@ -53,47 +51,60 @@ def process_and_visualize(df, filename):
     df['HS4'] = df['cmdCode'].str[:4]
     df['flowDesc'] = df['flowDesc'].str.lower()
 
-    # Ask for HS2 filter
-    available_hs2 = df['HS2'].unique()
-    selected_hs2 = st.multiselect(f"Select HS2 codes from {filename}:", available_hs2, default=available_hs2[:5])
-    df = df[df['HS2'].isin(selected_hs2)]
+    df['HS_label'] = df['HS2'] + " → " + df['HS4']
 
-    if df.empty:
-        st.warning("No data available after filtering HS2 codes.")
-        return
+    # =========================
+    # 1. Absolute Stacked Chart
+    # =========================
+    st.markdown("### 📊 Stacked Bar Chart – Absolute Trade Value")
 
-    # CHART TYPE 1 — Stacked Bar Chart with Unified Import/Export
-    if chart_type.startswith("Stacked"):
-        df['HS_label'] = df['HS2'] + " → " + df['HS4']
-        grouped = df.groupby(['HS_label', 'flowDesc'])[metric].sum().reset_index()
-        pivot = grouped.pivot_table(index='HS_label', columns='flowDesc', values=metric, aggfunc='sum').fillna(0)
-        pivot = pivot.sort_index()
+    grouped = df.groupby(['HS_label', 'flowDesc'])[metric].sum().reset_index()
+    pivot = grouped.pivot_table(index='HS_label', columns='flowDesc', values=metric, aggfunc='sum').fillna(0)
+    pivot = pivot.sort_index()
 
-        fig, ax = plt.subplots(figsize=(14, 7))
-        pivot.plot(kind='bar', stacked=True, ax=ax)
-        ax.set_title(f"{metric} by HS2 → HS4 (Import & Export Combined)", fontsize=14)
-        ax.set_ylabel(metric)
-        ax.set_xlabel("HS2 → HS4 Code")
-        ax.legend(title="Flow")
-        plt.xticks(rotation=45, ha="right")
-        st.pyplot(fig)
+    fig1, ax1 = plt.subplots(figsize=(14, 7))
+    pivot.plot(kind='bar', stacked=True, ax=ax1)
+    ax1.set_title("Absolute Import & Export by HS2 → HS4", fontsize=14)
+    ax1.set_ylabel(metric)
+    ax1.set_xlabel("HS2 → HS4 Code")
+    ax1.legend(title="Flow")
+    plt.xticks(rotation=45, ha="right")
+    st.pyplot(fig1)
 
-    # CHART TYPE 2 — Sunburst Chart for HS2 > HS4 + Flow
-    elif chart_type.startswith("Sunburst"):
-        import plotly.express as px
+    # ===============================
+    # 2. Percentage Stacked Chart
+    # ===============================
+    st.markdown("### 📊 Percentage Stacked Bar Chart – Share of Trade per HS Code")
 
-        grouped = df.groupby(['flowDesc', 'HS2', 'HS4'])[metric].sum().reset_index()
-        fig = px.sunburst(
-            grouped,
-            path=['flowDesc', 'HS2', 'HS4'],
-            values=metric,
-            title=f"Sunburst of {filename} – Flow → HS2 → HS4",
-            color='flowDesc'
-        )
-        fig.update_traces(insidetextorientation='radial')
-        st.plotly_chart(fig, use_container_width=True)
+    percentage_pivot = pivot.div(pivot.sum(axis=1), axis=0) * 100
 
-# Process uploaded files
+    fig2, ax2 = plt.subplots(figsize=(14, 7))
+    percentage_pivot.plot(kind='bar', stacked=True, ax=ax2)
+    ax2.set_title("Percentage Distribution of Import & Export by HS2 → HS4", fontsize=14)
+    ax2.set_ylabel("Percentage (%)")
+    ax2.set_xlabel("HS2 → HS4 Code")
+    ax2.legend(title="Flow")
+    plt.xticks(rotation=45, ha="right")
+    st.pyplot(fig2)
+
+    # ======================
+    # 3. Sunburst Hierarchy
+    # ======================
+    st.markdown("### 🌐 Sunburst Chart – Flow → HS2 → HS4")
+
+    sunburst_grouped = df.groupby(['flowDesc', 'HS2', 'HS4'])[metric].sum().reset_index()
+
+    fig3 = px.sunburst(
+        sunburst_grouped,
+        path=['flowDesc', 'HS2', 'HS4'],
+        values=metric,
+        title=f"Sunburst Chart for {filename}",
+        color='flowDesc'
+    )
+    fig3.update_traces(insidetextorientation='radial')
+    st.plotly_chart(fig3, use_container_width=True)
+
+# Run for each uploaded file
 if uploaded_files:
     for file in uploaded_files:
         try:
