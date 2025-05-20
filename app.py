@@ -20,7 +20,10 @@ def render_sunbursts_by_year(df, metric):
     df['value'] = df.get('cifvalue', pd.NA).fillna(df.get('fobvalue', pd.NA))
     df['reporterDesc'] = df.get('reporterDesc', 'Unknown Country').fillna('Unknown Country')
     df['countryFlow'] = df['reporterDesc'] + " (" + df['flowDesc'] + ")"
-    df['year'] = pd.to_datetime(df['periodDesc'], errors='coerce').dt.year
+    if 'periodDesc' in df.columns:
+        df['year'] = pd.to_datetime(df['periodDesc'], errors='coerce').dt.year
+    else:
+        df['year'] = pd.NA
 
     years = df['year'].dropna().unique()
     for year in sorted(years):
