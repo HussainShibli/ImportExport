@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="HS Code Import/Export Analyzer", layout="wide")
 st.title("📦 HS Code Import/Export Analyzer")
@@ -20,11 +21,8 @@ def render_combined_sunburst_chart(all_data, metric):
     all_data['flowDesc'] = all_data['flowDesc'].str.lower()
     all_data['value'] = all_data.get('cifvalue', pd.NA).fillna(all_data.get('fobvalue', pd.NA))
 
-    # Determine reporter country from each file
     all_data['reporterDesc'] = all_data.get('reporterDesc', 'Unknown Country')
     all_data['reporterDesc'] = all_data['reporterDesc'].fillna('Unknown Country')
-
-    # Combine country and flow for root label
     all_data['countryFlow'] = all_data['reporterDesc'] + " (" + all_data['flowDesc'] + ")"
 
     grouped = all_data.groupby(['countryFlow', 'HS2', 'HS4', 'HS6'])[metric].sum().reset_index()
@@ -40,6 +38,32 @@ def render_combined_sunburst_chart(all_data, metric):
     st.plotly_chart(fig, use_container_width=True)
 
 
+def render_stacked_bar_charts(df, metric):
+    st.markdown("### 📊 Stacked Bar Chart – HS2 Trade Value by Country and Flow")
+
+    grouped = df.groupby(['reporterDesc', 'flowDesc', 'HS2'])[metric].sum().reset_index()
+    pivot_abs = grouped.pivot_table(index='HS2', columns=['reporterDesc', 'flowDesc'], values=metric, aggfunc='sum').fillna(0)
+
+    fig1, ax1 = plt.subplots(figsize=(14, 7))
+    pivot_abs.plot(kind='bar', stacked=True, ax=ax1)
+    ax1.set_title("Absolute Trade Value by HS2", fontsize=14)
+    ax1.set_ylabel(metric)
+    ax1.set_xlabel("HS2 Code")
+    ax1.legend(title="Country / Flow", bbox_to_anchor=(1.05, 1), loc='upper left')
+    st.pyplot(fig1)
+
+    st.markdown("### 📊 Percentage Stacked Bar Chart – Share by HS2")
+
+    pivot_pct = pivot_abs.div(pivot_abs.sum(axis=1), axis=0) * 100
+    fig2, ax2 = plt.subplots(figsize=(14, 7))
+    pivot_pct.plot(kind='bar', stacked=True, ax=ax2)
+    ax2.set_title("Percentage Share by HS2", fontsize=14)
+    ax2.set_ylabel("Percentage (%)")
+    ax2.set_xlabel("HS2 Code")
+    ax2.legend(title="Country / Flow", bbox_to_anchor=(1.05, 1), loc='upper left')
+    st.pyplot(fig2)
+
+
 if uploaded_files:
     all_data = []
     for file in uploaded_files:
@@ -52,3 +76,4 @@ if uploaded_files:
     if all_data:
         combined_df = pd.concat(all_data, ignore_index=True)
         render_combined_sunburst_chart(combined_df, metric)
+        render_stacked_bar_charts(combined_df, metric)
