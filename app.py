@@ -52,8 +52,8 @@ def render_combined_stacked_bar(df, metric):
     df = df[df['HS4'].str.len() == 4]
 
     years = df['year'].dropna().unique()
-    for year in sorted(years):
-        st.markdown(f"#### Year: {int(year)}")
+    cols = st.columns(len(years))
+    for idx, year in enumerate(sorted(years)):
         year_df = df[df['year'] == year]
         grouped = year_df.groupby(['countryFlow', 'HS4'])[metric].sum().reset_index()
 
@@ -63,12 +63,13 @@ def render_combined_stacked_bar(df, metric):
                 x='countryFlow',
                 y=metric,
                 color='HS4',
-                title=f"Importing and Exporting Countries – HS4 Composition ({int(year)} | {'USD' if metric == 'value' else 'kg'})",
+                title=f"HS4 Composition – {int(year)} ({'USD' if metric == 'value' else 'kg'})",
                 labels={'value': metric, 'HS4': 'HS4 Code'},
                 text_auto='.2s'
             )
             fig.update_layout(barmode='stack', xaxis_title="Country (Flow)", yaxis_title=f"{metric} ({'USD' if metric == 'value' else 'kg'})")
-            st.plotly_chart(fig, use_container_width=True)
+            with cols[idx]:
+                st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("### 📊 Percentage Stacked Bar Chart – HS4 Share within Each Country")
     df['cmdCode'] = df['cmdCode'].astype(str)
