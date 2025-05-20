@@ -41,6 +41,35 @@ def render_combined_sunburst(df, metric):
             st.plotly_chart(fig, use_container_width=True)
 
 def render_combined_stacked_bar(df, metric):
+    st.markdown("### 📊 Yearly Combined Stacked Bar Charts – HS4 Breakdown")
+    df['cmdCode'] = df['cmdCode'].astype(str)
+    df['HS4'] = df['cmdCode'].str[:4]
+    df['value'] = df.get('cifvalue', pd.NA).fillna(df.get('fobvalue', pd.NA))
+    df['reporterDesc'] = df.get('reporterDesc', 'Unknown Country').fillna('Unknown Country')
+    df['flowDesc'] = df.get('flowDesc', '').str.lower()
+    df['countryFlow'] = df['reporterDesc'] + " (" + df['flowDesc'] + ")"
+    df['year'] = pd.to_numeric(df.get('refYear', pd.NA), errors='coerce')
+    df = df[df['HS4'].str.len() == 4]
+
+    years = df['year'].dropna().unique()
+    for year in sorted(years):
+        st.markdown(f"#### Year: {int(year)}")
+        year_df = df[df['year'] == year]
+        grouped = year_df.groupby(['countryFlow', 'HS4'])[metric].sum().reset_index()
+
+        if not grouped.empty:
+            fig = px.bar(
+                grouped,
+                x='countryFlow',
+                y=metric,
+                color='HS4',
+                title=f"Importing and Exporting Countries – HS4 Composition ({int(year)} | {'USD' if metric == 'value' else 'kg'})",
+                labels={'value': metric, 'HS4': 'HS4 Code'},
+                text_auto='.2s'
+            )
+            fig.update_layout(barmode='stack', xaxis_title="Country (Flow)", yaxis_title=f"{metric} ({'USD' if metric == 'value' else 'kg'})")
+            st.plotly_chart(fig, use_container_width=True)
+
     st.markdown("### 📊 Percentage Stacked Bar Chart – HS4 Share within Each Country")
     df['cmdCode'] = df['cmdCode'].astype(str)
     df['HS4'] = df['cmdCode'].str[:4]
