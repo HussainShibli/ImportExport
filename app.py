@@ -12,6 +12,7 @@ metric = st.selectbox("Select Metric", ["value", "netWgt"])
 
 
 def render_combined_sunburst(df, metric):
+    level = st.radio("Select HS Level for Sunburst", options=["HS4", "HS6"], horizontal=True)
     st.markdown("### 🌐 Sunburst Chart – HS4 → HS6 Breakdown by Country and Year")
     df['cmdCode'] = df['cmdCode'].astype(str)
     df['HS4'] = df['cmdCode'].str[:4]
@@ -29,6 +30,11 @@ def render_combined_sunburst(df, metric):
         year_df['flow_order'] = year_df['flowDesc'].map({'import': 0, 'export': 1})
         year_df = year_df.sort_values(by=['flow_order', 'reporterDesc'])
         grouped = year_df.groupby(['countryFlow', 'HS4', 'HS6'])[metric].sum().reset_index()
+        if level == 'HS4':
+            grouped = grouped.groupby(['countryFlow', 'HS4'])[metric].sum().reset_index()
+            fig = px.sunburst(grouped, path=['countryFlow', 'HS4'], values=metric, color='countryFlow', title=f"{int(year)} ({'USD' if metric == 'value' else 'kg'})")
+        elif level == 'HS6':
+            fig = px.sunburst(grouped, path=['countryFlow', 'HS4', 'HS6'], values=metric, color='countryFlow', title=f"{int(year)} ({'USD' if metric == 'value' else 'kg'})")
         fig = px.sunburst(
             grouped,
             path=['countryFlow', 'HS4', 'HS6'],
