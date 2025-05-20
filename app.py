@@ -41,6 +41,8 @@ def render_combined_sunburst(df, metric):
             st.plotly_chart(fig, use_container_width=True)
 
 def render_combined_stacked_bar(df, metric):
+    level = st.radio("Select HS Level for Bar Charts", options=["HS4", "HS6"], horizontal=True)
+    df['HS6'] = df['cmdCode'].str[:6]
     st.markdown("### 📊 Combined Absolute Stacked Bar Chart – HS4 Value by Flow and Year")
     df['cmdCode'] = df['cmdCode'].astype(str)
     df['HS4'] = df['cmdCode'].str[:4]
@@ -49,19 +51,19 @@ def render_combined_stacked_bar(df, metric):
     df['flowDesc'] = df.get('flowDesc', '').str.lower()
     df['countryFlow'] = df['reporterDesc'] + " (" + df['flowDesc'] + ")"
     df['year'] = pd.to_numeric(df.get('refYear', pd.NA), errors='coerce')
-    df = df[df['HS4'].str.len() == 4]
+    df = df[df[level].str.len() == (4 if level == 'HS4' else 6)]
 
-    grouped = df.groupby(['year', 'flowDesc', 'HS4'])[metric].sum().reset_index()
-    grouped['year_flow'] = grouped['year'].astype(str) + " – " + grouped['flowDesc'].str.capitalize()
+    grouped = df.groupby(['year', 'flowDesc', level])[metric].sum().reset_index()
+    grouped['year_flow'] = grouped['year'].astype(str) + " / " + grouped['flowDesc'].str.capitalize()
 
     if not grouped.empty:
         fig = px.bar(
             grouped,
             x='year_flow',
             y=metric,
-            color='HS4',
+            color=level,
             title="HS4 Value by Flow and Year",
-            labels={metric: metric, 'HS4': 'HS4 Code'},
+            labels={metric: metric, level: level + ' Code'},
             text_auto='.2s'
         )
         fig.update_layout(barmode='stack', xaxis_title="Year – Flow", yaxis_title=f"{metric} ({'USD' if metric == 'value' else 'kg'})", showlegend=True)
@@ -73,7 +75,7 @@ def render_combined_stacked_bar(df, metric):
     grouped = df.groupby(['year', 'flowDesc', 'HS4'])[metric].sum().reset_index()
     grouped['year_flow'] = grouped['year'].astype(str) + " – " + grouped['flowDesc'].str.capitalize()
 
-    pivot = grouped.pivot(index='year_flow', columns='HS4', values=metric).fillna(0)
+    pivot = grouped.pivot(index='year_flow', columns=level, values=metric).fillna(0)
     percent_df = pivot.div(pivot.sum(axis=1), axis=0).reset_index().melt(id_vars='year_flow', var_name='HS4', value_name='percentage')
     percent_df['percentage'] *= 100
 
@@ -84,7 +86,7 @@ def render_combined_stacked_bar(df, metric):
             y='percentage',
             color='HS4',
             title="HS4 Share by Flow and Year",
-            labels={'percentage': 'Percentage (%)', 'HS4': 'HS4 Code'},
+            labels={'percentage': 'Percentage (%)', level: level + ' Code'},
             text_auto='.1f'
         )
         fig.update_layout(barmode='stack', xaxis_title="Year – Flow", yaxis_title="Percentage (%)", showlegend=True)
