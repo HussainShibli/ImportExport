@@ -37,8 +37,8 @@ def render_combined_sunburst_chart(all_data, metric):
     st.plotly_chart(fig, use_container_width=True)
 
 
-def render_hs4_stacked_bars(df, metric):
-    st.markdown("### 📊 Stacked HS4 Bar Chart by Country (Import vs Export)")
+def render_combined_hs4_stacked_bar(df, metric):
+    st.markdown("### 📊 Combined Stacked Bar Chart – HS4 Breakdown for Importing and Exporting Countries")
 
     df['cmdCode'] = df['cmdCode'].astype(str)
     df['HS4'] = df['cmdCode'].str[:4]
@@ -47,24 +47,22 @@ def render_hs4_stacked_bars(df, metric):
     df['reporterDesc'] = df.get('reporterDesc', 'Unknown Country').fillna('Unknown Country')
     df['flowDesc'] = df['flowDesc'].str.lower()
 
-    grouped = df.groupby(['reporterDesc', 'flowDesc', 'HS4'])[metric].sum().reset_index()
+    df['countryFlow'] = df['reporterDesc'] + " (" + df['flowDesc'] + ")"
 
-    for flow in ['import', 'export']:
-        flow_df = grouped[grouped['flowDesc'] == flow]
-        pivot = flow_df.pivot_table(index='reporterDesc', columns='HS4', values=metric, aggfunc='sum').fillna(0)
+    grouped = df.groupby(['countryFlow', 'HS4'])[metric].sum().reset_index()
+    pivot = grouped.pivot_table(index='countryFlow', columns='HS4', values=metric, aggfunc='sum').fillna(0)
 
-        if not pivot.empty:
-            st.markdown(f"#### {flow.title()}ing Country View")
-            fig = px.bar(
-                pivot,
-                x=pivot.index,
-                y=pivot.columns,
-                title=f"{flow.title()}ing Countries – Stacked by HS4 ({metric})",
-                labels={'value': metric, 'variable': 'HS4 Code'},
-                text_auto='.2s'
-            )
-            fig.update_layout(barmode='stack', xaxis_title="Country", yaxis_title=metric)
-            st.plotly_chart(fig, use_container_width=True)
+    if not pivot.empty:
+        fig = px.bar(
+            pivot,
+            x=pivot.index,
+            y=pivot.columns,
+            title=f"Importing and Exporting Countries – HS4 Composition ({metric})",
+            labels={'value': metric, 'variable': 'HS4 Code'},
+            text_auto='.2s'
+        )
+        fig.update_layout(barmode='stack', xaxis_title="Country (Flow)", yaxis_title=metric)
+        st.plotly_chart(fig, use_container_width=True)
 
 
 if uploaded_files:
@@ -79,4 +77,4 @@ if uploaded_files:
     if all_data:
         combined_df = pd.concat(all_data, ignore_index=True)
         render_combined_sunburst_chart(combined_df, metric)
-        render_hs4_stacked_bars(combined_df, metric)
+        render_combined_hs4_stacked_bar(combined_df, metric)
