@@ -43,7 +43,11 @@ def render_yearly_import_export_bars(df, metric):
     df['value'] = df.get('cifvalue', pd.NA).fillna(df.get('fobvalue', pd.NA))
     df['flowDesc'] = df.get('flowDesc', '').str.lower()
     df['year'] = pd.to_numeric(df.get('refYear', pd.NA), errors='coerce')
-    grouped = df.groupby(['year', 'flowDesc'])[metric].sum().reset_index()
+    if 'year' in df.columns and 'flowDesc' in df.columns:
+        grouped = df.groupby(['year', 'flowDesc'])[metric].sum().reset_index()
+    else:
+        st.warning("Missing 'year' or 'flowDesc' column in data. Cannot plot yearly import/export totals.")
+        return
 
     fig = px.bar(
         grouped,
