@@ -96,6 +96,9 @@ hs_level = st.radio("Select HS Level", options=["HS4", "HS6"], horizontal=True)
 
 combined_df = load_data_for_hs2(selected_hs2)
 if combined_df is not None:
+    if not combined_df['cmdCode'].astype(str).str.match(r'^\d+$').any():
+        st.warning("⚠️ Warning: 'cmdCode' column appears to contain non-numeric values. Please check your data format.")
+    
     combined_df['cmdCode'] = combined_df['cmdCode'].astype(str)
     combined_df['HS4'] = combined_df['cmdCode'].str[:4]
     combined_df['HS6'] = combined_df['cmdCode'].str[:6]
