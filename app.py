@@ -6,7 +6,7 @@ st.set_page_config(page_title="HS Code Import/Export Analyzer", layout="wide")
 st.title("📦 HS Code Import/Export Analyzer")
 st.markdown("Upload one or more CSV files containing HS-level trade data. This tool will prepare data for visualization.")
 
-uploaded_files = st.file_uploader("Upload CSV files", type=["csv"], accept_multiple_files=True)
+uploaded_files = st.file_uploader("Upload your CSV file(s)", type=["csv"], accept_multiple_files=True)
 metric = st.selectbox("Select Metric", ["value", "netWgt"])
 
 
@@ -135,13 +135,19 @@ if uploaded_files:
 
         filtered_df = combined_df[combined_df['HS2'].isin(selected_hs2)]
 
-        hs4_options = sorted(filtered_df['HS4'].dropna().unique())
-        selected_hs4 = st.multiselect("Select HS4 Codes (within selected HS2s)", options=hs4_options, default=hs4_options)
+        hs4_list = sorted(filtered_df['HS4'].dropna().unique())
+        hs6_list = sorted(filtered_df['cmdCode'].str[:6].dropna().unique())
 
-        hs6_options = sorted(filtered_df[filtered_df['HS4'].isin(selected_hs4)]['cmdCode'].str[:6].dropna().unique())
-        selected_hs6 = st.multiselect("Select HS6 Codes (within selected HS4s)", options=hs6_options, default=hs6_options)
+        selector_options = [f"HS4: {code}" for code in hs4_list] + [f"HS6: {code}" for code in hs6_list]
+        selected_codes = st.multiselect("Select HS4/HS6 Codes", options=selector_options, default=selector_options)
 
-        final_df = filtered_df[(filtered_df['HS4'].isin(selected_hs4)) & (filtered_df['cmdCode'].str[:6].isin(selected_hs6))]
+        selected_hs4 = [code.split(": ")[1] for code in selected_codes if code.startswith("HS4:")]
+        selected_hs6 = [code.split(": ")[1] for code in selected_codes if code.startswith("HS6:")]
+
+        final_df = filtered_df[
+            (filtered_df['HS4'].isin(selected_hs4)) |
+            (filtered_df['cmdCode'].str[:6].isin(selected_hs6))
+        ]
 
         render_combined_sunburst(final_df, metric)
         render_combined_stacked_bar(final_df, metric)
