@@ -96,7 +96,7 @@ hs_level = st.radio("Select HS Level", options=["HS4", "HS6"], horizontal=True)
 
 combined_df = load_data_for_hs2(selected_hs2)
 if combined_df is not None:
-    required_columns = ['cmdCode', 'cifvalue', 'fobvalue', 'Reporter', 'flowDesc', 'Year', 'netWgt']
+    required_columns = ['cmdCode', 'cifvalue', 'fobvalue', 'reporterDesc', 'flowDesc', 'refYear', 'netWgt']
     missing_columns = [col for col in required_columns if col not in combined_df.columns]
     if missing_columns:
         st.error(f"❌ Missing required columns: {', '.join(missing_columns)}")
@@ -107,10 +107,10 @@ if combined_df is not None:
     combined_df['HS6'] = combined_df['cmdCode'].str[:6]
     combined_df['HS2'] = combined_df['cmdCode'].str[:2]
     combined_df['value'] = combined_df['cifvalue'].fillna(combined_df['fobvalue']).fillna(0)
-    combined_df['reporterDesc'] = combined_df['Reporter'].fillna('Unknown Country')
+    combined_df['reporterDesc'] = combined_df['reporterDesc'].fillna('Unknown Country')
     combined_df['flowDesc'] = combined_df['flowDesc'].str.lower()
     combined_df['countryFlow'] = combined_df['reporterDesc'] + " (" + combined_df['flowDesc'] + ")"
-    combined_df['refYear'] = pd.to_numeric(combined_df['Year'], errors='coerce')
+    combined_df['refYear'] = pd.to_numeric(combined_df['refYear'], errors='coerce')
 
     hs4_options = sorted(set(code for code in combined_df['HS4'].dropna().unique() if len(code) == 4))
     selected_hs4 = st.multiselect("Select HS4 Codes", options=hs4_options, default=hs4_options)
