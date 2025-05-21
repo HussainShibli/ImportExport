@@ -96,7 +96,7 @@ hs_level = st.radio("Select HS Level", options=["HS4", "HS6"], horizontal=True)
 
 combined_df = load_data_for_hs2(selected_hs2)
 if combined_df is not None:
-    required_columns = ['cmdCode', 'TradeValue(USD)', 'cifvalue', 'fobvalue', 'Reporter', 'flowDesc', 'Year', 'netWgt']
+    required_columns = ['cmdCode', 'cifvalue', 'fobvalue', 'Reporter', 'flowDesc', 'Year', 'netWgt']
     missing_columns = [col for col in required_columns if col not in combined_df.columns]
     if missing_columns:
         st.error(f"❌ Missing required columns: {', '.join(missing_columns)}")
