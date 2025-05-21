@@ -76,11 +76,11 @@ def render_ratio_chart(df, hs_level):
 
     df['quantity'] = df.apply(
         lambda row: row['altQty'] if pd.notnull(row['altQty']) and row['altQty'] > 0
-        else row['Netweight(kg)'], axis=1
+        else row['netWgt'], axis=1
     )
     df = df[df['quantity'] > 0]
 
-    df['valuePerUnit'] = df['TradeValue(USD)'] / df['quantity']
+    df['valuePerUnit'] = df['value'] / df['quantity']
     grouped = df.groupby(['refYear', 'flowDesc', hs_level])['valuePerUnit'].mean().reset_index()
     fig = px.line(grouped, x='refYear', y='valuePerUnit', color=hs_level, line_group=hs_level,
                   facet_col='flowDesc', markers=True,
@@ -96,8 +96,10 @@ hs_level = st.radio("Select HS Level", options=["HS4", "HS6"], horizontal=True)
 
 combined_df = load_data_for_hs2(selected_hs2)
 if combined_df is not None:
-    if 'cmdCode' not in combined_df.columns:
-        st.error("❌ 'cmdCode' column is missing in the file.")
+    required_columns = ['cmdCode', 'TradeValue(USD)', 'Reporter', 'flowDesc', 'Year', 'netWgt']
+    missing_columns = [col for col in required_columns if col not in combined_df.columns]
+    if missing_columns:
+        st.error(f"❌ Missing required columns: {', '.join(missing_columns)}")
         st.stop()
 
     combined_df['cmdCode'] = combined_df['cmdCode'].astype(str)
@@ -124,12 +126,12 @@ if combined_df is not None:
 
     # Render all graphs in desired order
     render_combined_sunburst(final_df, "value", hs_level)
-    render_combined_sunburst(final_df, "Netweight(kg)", hs_level)
+    render_combined_sunburst(final_df, "netWgt", hs_level)
 
     render_combined_stacked_bar(final_df, "value", hs_level, show="absolute")
-    render_combined_stacked_bar(final_df, "Netweight(kg)", hs_level, show="absolute")
+    render_combined_stacked_bar(final_df, "netWgt", hs_level, show="absolute")
 
     render_combined_stacked_bar(final_df, "value", hs_level, show="percentage")
-    render_combined_stacked_bar(final_df, "Netweight(kg)", hs_level, show="percentage")
+    render_combined_stacked_bar(final_df, "netWgt", hs_level, show="percentage")
 
     render_ratio_chart(final_df, hs_level)
