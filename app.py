@@ -80,7 +80,7 @@ def render_ratio_chart(df, hs_level):
     )
     df = df[df['quantity'] > 0]
 
-    df['valuePerUnit'] = df['value'] / df['quantity']
+    df['valuePerUnit'] = df['TradeValue(USD)'] / df['quantity']
     grouped = df.groupby(['refYear', 'flowDesc', hs_level])['valuePerUnit'].mean().reset_index()
     fig = px.line(grouped, x='refYear', y='valuePerUnit', color=hs_level, line_group=hs_level,
                   facet_col='flowDesc', markers=True,
@@ -96,15 +96,15 @@ hs_level = st.radio("Select HS Level", options=["HS4", "HS6"], horizontal=True)
 
 combined_df = load_data_for_hs2(selected_hs2)
 if combined_df is not None:
-    combined_df['cmdCode'] = combined_df['cmdCode'].astype(str)
+    combined_df['cmdCode'] = combined_df['Commodity Code'].astype(str)
     combined_df['HS4'] = combined_df['cmdCode'].str[:4]
     combined_df['HS6'] = combined_df['cmdCode'].str[:6]
     combined_df['HS2'] = combined_df['cmdCode'].str[:2]
-    combined_df['value'] = combined_df['cifvalue'].fillna(combined_df['fobvalue'])
-    combined_df['reporterDesc'] = combined_df['reporterDesc'].fillna('Unknown Country')
+    combined_df['value'] = combined_df['TradeValue(USD)'].fillna(0)
+    combined_df['reporterDesc'] = combined_df['Reporter'].fillna('Unknown Country')
     combined_df['flowDesc'] = combined_df['flowDesc'].str.lower()
     combined_df['countryFlow'] = combined_df['reporterDesc'] + " (" + combined_df['flowDesc'] + ")"
-    combined_df['refYear'] = pd.to_numeric(combined_df['refYear'], errors='coerce')
+    combined_df['refYear'] = pd.to_numeric(combined_df['Year'], errors='coerce')
 
     hs4_options = sorted(set(code for code in combined_df['HS4'].dropna().unique() if len(code) == 4))
     selected_hs4 = st.multiselect("Select HS4 Codes", options=hs4_options, default=hs4_options)
@@ -120,12 +120,12 @@ if combined_df is not None:
 
     # Render all graphs in desired order
     render_combined_sunburst(final_df, "value", hs_level)
-    render_combined_sunburst(final_df, "netWgt", hs_level)
+    render_combined_sunburst(final_df, "Netweight(kg)", hs_level)
 
     render_combined_stacked_bar(final_df, "value", hs_level, show="absolute")
-    render_combined_stacked_bar(final_df, "netWgt", hs_level, show="absolute")
+    render_combined_stacked_bar(final_df, "Netweight(kg)", hs_level, show="absolute")
 
     render_combined_stacked_bar(final_df, "value", hs_level, show="percentage")
-    render_combined_stacked_bar(final_df, "netWgt", hs_level, show="percentage")
+    render_combined_stacked_bar(final_df, "Netweight(kg)", hs_level, show="percentage")
 
     render_ratio_chart(final_df, hs_level)
