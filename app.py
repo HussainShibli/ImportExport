@@ -96,11 +96,11 @@ hs_level = st.radio("Select HS Level", options=["HS4", "HS6"], horizontal=True)
 
 combined_df = load_data_for_hs2(selected_hs2)
 if combined_df is not None:
-    if 'Commodity Code' not in combined_df.columns:
-        st.error("❌ 'Commodity Code' column is missing in the file.")
+    if 'cmdCode' not in combined_df.columns:
+        st.error("❌ 'cmdCode' column is missing in the file.")
         st.stop()
 
-    combined_df['cmdCode'] = combined_df['Commodity Code'].astype(str)
+    combined_df['cmdCode'] = combined_df['cmdCode'].astype(str)
     combined_df['HS4'] = combined_df['cmdCode'].str[:4]
     combined_df['HS6'] = combined_df['cmdCode'].str[:6]
     combined_df['HS2'] = combined_df['cmdCode'].str[:2]
