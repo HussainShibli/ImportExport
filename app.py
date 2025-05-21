@@ -6,7 +6,7 @@ st.set_page_config(page_title="HS Code Import/Export Analyzer", layout="wide")
 st.title("📦 HS Code Import/Export Analyzer")
 st.markdown("Upload one or more CSV files containing HS-level trade data. This tool will prepare data for visualization.")
 
-uploaded_files = st.file_uploader("Upload your CSV file(s)", type=["csv"], accept_multiple_files=True)
+uploaded_files = st.file_uploader("Upload CSV files", type=["csv"], accept_multiple_files=True)
 metric = st.selectbox("Select Metric", ["value", "netWgt"])
 
 
