@@ -104,5 +104,7 @@ if combined_df is not None:
             fig.update_layout(barmode='stack', xaxis_title="Year – Flow", yaxis_title="Percentage (%)")
             st.plotly_chart(fig, use_container_width=True)
 
-    render_combined_sunburst(final_df, metric, hs_level)
-    render_combined_stacked_bar(final_df, metric, hs_level)
+        for metric in ["value", "netWgt"]:
+            st.markdown(f"## 📊 Visualizing Metric: {'USD' if metric == 'value' else 'Weight (kg)'}")
+            render_combined_sunburst(final_df, metric, hs_level)
+            render_combined_stacked_bar(final_df, metric, hs_level)
