@@ -81,30 +81,45 @@ if combined_df is not None:
             with cols[idx]:
                 st.plotly_chart(fig, use_container_width=True)
 
-    def render_combined_stacked_bar(df, metric, hs_level):
-        st.markdown("### 📊 Combined Absolute Stacked Bar Chart")
-        df = df[df[hs_level].str.len() == (4 if hs_level == 'HS4' else 6)]
-        grouped = df.groupby(['year', 'flowDesc', hs_level])[metric].sum().reset_index()
-        grouped['year_flow'] = grouped['year'].astype(str) + " / " + grouped['flowDesc'].str.capitalize()
-        if not grouped.empty:
-            fig = px.bar(grouped, x='year_flow', y=metric, color=hs_level,
-                         title=f"{hs_level} Value by Flow and Year", text_auto='.2s')
-            fig.update_layout(barmode='stack', xaxis_title="Year – Flow", yaxis_title=f"{metric} ({'USD' if metric == 'value' else 'kg'})")
-            st.plotly_chart(fig, use_container_width=True)
+    def render_combined_stacked_bar(df, metric, hs_level, show="both"):
+        if show in ["absolute", "both"]:
+            st.markdown(f"#### Absolute Stacked Bar Chart – {metric.upper()}")
+            df = df[df[hs_level].str.len() == (4 if hs_level == 'HS4' else 6)]
+            grouped = df.groupby(['year', 'flowDesc', hs_level])[metric].sum().reset_index()
+            grouped['year_flow'] = grouped['year'].astype(str) + " / " + grouped['flowDesc'].str.capitalize()
+            if not grouped.empty:
+                fig = px.bar(grouped, x='year_flow', y=metric, color=hs_level,
+                             title=f"{hs_level} Value by Flow and Year", text_auto='.2s')
+                fig.update_layout(barmode='stack', xaxis_title="Year – Flow", yaxis_title=f"{metric} ({'USD' if metric == 'value' else 'kg'})")
+                st.plotly_chart(fig, use_container_width=True)
 
-        st.markdown("### 📊 Combined Percentage Stacked Bar Chart")
-        grouped = df.groupby(['year', 'flowDesc', hs_level])[metric].sum().reset_index()
-        grouped['year_flow'] = grouped['year'].astype(str) + " – " + grouped['flowDesc'].str.capitalize()
-        pivot = grouped.pivot(index='year_flow', columns=hs_level, values=metric).fillna(0)
-        percent_df = pivot.div(pivot.sum(axis=1), axis=0).reset_index().melt(id_vars='year_flow', var_name=hs_level, value_name='percentage')
-        percent_df['percentage'] *= 100
-        if not percent_df.empty:
-            fig = px.bar(percent_df, x='year_flow', y='percentage', color=hs_level,
-                         title=f"{hs_level} Share by Flow and Year", text_auto='.1f')
-            fig.update_layout(barmode='stack', xaxis_title="Year – Flow", yaxis_title="Percentage (%)")
-            st.plotly_chart(fig, use_container_width=True)
+        if show in ["percentage", "both"]:
+            st.markdown(f"#### Percentage Stacked Bar Chart – {metric.upper()}")
+            grouped = df.groupby(['year', 'flowDesc', hs_level])[metric].sum().reset_index()
+            grouped['year_flow'] = grouped['year'].astype(str) + " – " + grouped['flowDesc'].str.capitalize()
+            pivot = grouped.pivot(index='year_flow', columns=hs_level, values=metric).fillna(0)
+            percent_df = pivot.div(pivot.sum(axis=1), axis=0).reset_index().melt(id_vars='year_flow', var_name=hs_level, value_name='percentage')
+            percent_df['percentage'] *= 100
+            if not percent_df.empty:
+                fig = px.bar(percent_df, x='year_flow', y='percentage', color=hs_level,
+                             title=f"{hs_level} Share by Flow and Year", text_auto='.1f')
+                fig.update_layout(barmode='stack', xaxis_title="Year – Flow", yaxis_title="Percentage (%)")
+                st.plotly_chart(fig, use_container_width=True)
 
-for metric in ["value", "netWgt"]:
-    st.markdown(f"## 📊 Visualizing Metric: {'USD' if metric == 'value' else 'Weight (kg)'}")
-    render_combined_sunburst(final_df, metric, hs_level)
-    render_combined_stacked_bar(final_df, metric, hs_level)
+st.markdown("## 🌐 Sunburst – Value (USD)")
+render_combined_sunburst(final_df, "value", hs_level)
+
+st.markdown("## 🌐 Sunburst – Weight (kg)")
+render_combined_sunburst(final_df, "netWgt", hs_level)
+
+st.markdown("## 📊 Absolute Bar Chart – Value (USD)")
+render_combined_stacked_bar(final_df, "value", hs_level, show="absolute")
+
+st.markdown("## 📊 Absolute Bar Chart – Weight (kg)")
+render_combined_stacked_bar(final_df, "netWgt", hs_level, show="absolute")
+
+st.markdown("## 📊 Percentage Bar Chart – Value (USD)")
+render_combined_stacked_bar(final_df, "value", hs_level, show="percentage")
+
+st.markdown("## 📊 Percentage Bar Chart – Weight (kg)")
+render_combined_stacked_bar(final_df, "netWgt", hs_level, show="percentage")
