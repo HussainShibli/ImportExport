@@ -6,7 +6,14 @@ import os
 DATA_FOLDER = "data"  # Folder containing HS2_Import.csv and HS2_Export.csv files
 
 st.set_page_config(page_title="HS Code Import/Export Analyzer", layout="wide")
-st.title("\U0001F4E6 HS Code Import/Export Analyzer (Folder Mode)")
+st.title("📦 HS Code Import/Export Analyzer (Folder Mode)")
+
+# Show importing and exporting country info if present
+if 'reporterDesc' in combined_df.columns and 'flowDesc' in combined_df.columns:
+    importers = combined_df[combined_df['flowDesc'].str.lower() == 'import']['reporterDesc'].unique()
+    exporters = combined_df[combined_df['flowDesc'].str.lower() == 'export']['reporterDesc'].unique()
+    st.markdown(f"**📥 Importing Countries:** {', '.join(importers)}")
+    st.markdown(f"**📤 Exporting Countries:** {', '.join(exporters)}")")
 st.markdown("Select an HS2 code to visualize its Import/Export data from local files.")
 
 # Get available HS2 codes from filenames in folder
