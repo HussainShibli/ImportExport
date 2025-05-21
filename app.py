@@ -96,6 +96,13 @@ hs_level = st.radio("Select HS Level", options=["HS4", "HS6"], horizontal=True)
 
 combined_df = load_data_for_hs2(selected_hs2)
 if combined_df is not None:
+    # Show importing and exporting country info if present
+    if 'reporterDesc' in combined_df.columns and 'flowDesc' in combined_df.columns:
+        importers = combined_df[combined_df['flowDesc'].str.lower() == 'import']['reporterDesc'].unique()
+        exporters = combined_df[combined_df['flowDesc'].str.lower() == 'export']['reporterDesc'].unique()
+        st.markdown(f"**📥 Importing Countries:** {', '.join(importers)}")
+        st.markdown(f"**📤 Exporting Countries:** {', '.join(exporters)}")
+  
     required_columns = ['cmdCode', 'cifvalue', 'fobvalue', 'reporterDesc', 'flowDesc', 'refYear', 'netWgt']
     missing_columns = [col for col in required_columns if col not in combined_df.columns]
     if missing_columns:
