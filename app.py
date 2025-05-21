@@ -139,11 +139,13 @@ if uploaded_files:
         hs4_list = sorted(filtered_df['HS4'].dropna().unique())
         hs6_list = sorted(filtered_df['cmdCode'].str[:6].dropna().unique())
 
-        selector_options = [f"HS4: {code}" for code in hs4_list] + [f"HS6: {code}" for code in hs6_list]
-        selected_codes = st.multiselect("Select HS4/HS6 Codes", options=selector_options, default=selector_options)
-
-        selected_hs4 = [code.split(": ")[1] for code in selected_codes if code.startswith("HS4:")]
-        selected_hs6 = [code.split(": ")[1] for code in selected_codes if code.startswith("HS6:")]
+        # Combine unique codes across both levels
+        code_options = sorted(set(hs4_list + hs6_list))
+        selected_codes = st.multiselect("Select HS4/HS6 Codes", options=code_options, default=code_options)
+        
+        # Split codes based on length
+        selected_hs4 = [code for code in selected_codes if len(code) == 4]
+        selected_hs6 = [code for code in selected_codes if len(code) == 6]
 
         final_df = filtered_df[
             (filtered_df['HS4'].isin(selected_hs4)) |
