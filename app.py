@@ -136,21 +136,19 @@ if uploaded_files:
 
         filtered_df = combined_df[combined_df['HS2'].isin(selected_hs2)]
 
-        hs4_list = sorted(filtered_df['HS4'].dropna().unique())
-        hs6_list = sorted(filtered_df['cmdCode'].str[:6].dropna().unique())
-
-        # Combine unique codes across both levels
-        code_options = sorted(set(hs4_list + hs6_list))
-        selected_codes = st.multiselect("Select HS4/HS6 Codes", options=code_options, default=code_options)
+        # Two distinct selectors: one for HS4, one for HS6
+        hs4_options = sorted(filtered_df['HS4'].dropna().unique())
+        selected_hs4 = st.multiselect("Select HS4 Codes", options=hs4_options, default=hs4_options)
         
-        # Split codes based on length
-        selected_hs4 = [code for code in selected_codes if len(code) == 4]
-        selected_hs6 = [code for code in selected_codes if len(code) == 6]
+        hs6_options = sorted(filtered_df[filtered_df['HS4'].isin(selected_hs4)]['cmdCode'].str[:6].dropna().unique())
+        selected_hs6 = st.multiselect("Select HS6 Codes (within selected HS4s)", options=hs6_options, default=hs6_options)
+
 
         final_df = filtered_df[
             (filtered_df['HS4'].isin(selected_hs4)) |
             (filtered_df['cmdCode'].str[:6].isin(selected_hs6))
         ]
+
 
         render_combined_sunburst(final_df, metric, hs_level)
         render_combined_stacked_bar(final_df, metric, hs_level)
