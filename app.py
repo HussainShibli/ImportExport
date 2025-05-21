@@ -68,18 +68,22 @@ def render_combined_stacked_bar(df, metric, hs_level, show="both"):
         fig.update_layout(barmode='stack', xaxis_title="Year – Flow", yaxis_title="Percentage (%)")
         st.plotly_chart(fig, use_container_width=True)
 
-# Chart: Value / altQty Ratio
+# Chart: Value / Quantity Ratio using netWgt unless it's zero or mismatched
+
 def render_ratio_chart(df, hs_level):
-    st.markdown("### \U0001F4C8 Value-to-Quantity Ratio Over Time (Value / altQty)")
+    st.markdown("### \U0001F4C8 Value-to-Quantity Ratio Over Time (Value / netWgt or altQty)")
     df = df[df[hs_level].str.len() == (4 if hs_level == 'HS4' else 6)].copy()
-    df = df[df["altQty"] > 0]
-    df['valuePerUnit'] = df['value'] / df['altQty']
+
+    df['quantity'] = df.apply(lambda row: row['netWgt'] if pd.notnull(row['netWgt']) and row['netWgt'] > 0 and (pd.isnull(row['altQty']) or row['netWgt'] == row['altQty']) else row['altQty'], axis=1)
+    df = df[df['quantity'] > 0]
+
+    df['valuePerUnit'] = df['value'] / df['quantity']
     grouped = df.groupby(['year', 'flowDesc', hs_level])['valuePerUnit'].mean().reset_index()
     fig = px.line(grouped, x='year', y='valuePerUnit', color=hs_level, line_group=hs_level,
                   facet_col='flowDesc', markers=True,
-                  title="Value per Unit (USD / altQty) Over Time",
-                  labels={'valuePerUnit': 'Value / altQty', hs_level: f'{hs_level} Code'})
-    fig.update_layout(xaxis_title="Year", yaxis_title="USD per Unit (altQty)", height=500)
+                  title="Value per Unit (USD / netWgt or altQty) Over Time",
+                  labels={'valuePerUnit': 'Value / Quantity', hs_level: f'{hs_level} Code'})
+    fig.update_layout(xaxis_title="Year", yaxis_title="USD per Unit", height=500)
     st.plotly_chart(fig, use_container_width=True)
 
 # MAIN APP FLOW
