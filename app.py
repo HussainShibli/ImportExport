@@ -9,9 +9,11 @@ st.markdown("Upload one or more CSV files containing HS-level trade data. This t
 uploaded_files = st.file_uploader("Upload your CSV file(s)", type=["csv"], accept_multiple_files=True)
 metric = st.selectbox("Select Metric", ["value", "netWgt"])
 
+# ✅ Unified HS Level selector
+hs_level = st.radio("Select HS Level", options=["HS4", "HS6"], horizontal=True)
 
-def render_combined_sunburst(df, metric):
-    level = st.radio("Select HS Level for Sunburst", options=["HS4", "HS6"], horizontal=True)
+
+def render_combined_sunburst(df, metric, hs_level):
     st.markdown("### 🌐 Sunburst Chart – HS Breakdown by Country and Year")
 
     df['cmdCode'] = df['cmdCode'].astype(str)
@@ -32,7 +34,7 @@ def render_combined_sunburst(df, metric):
 
         grouped = year_df.groupby(['countryFlow', 'HS4', 'HS6'])[metric].sum().reset_index()
 
-        if level == 'HS4':
+        if hs_level == 'HS4':
             grouped = grouped.groupby(['countryFlow', 'HS4'])[metric].sum().reset_index()
             path = ['countryFlow', 'HS4']
         else:
@@ -50,8 +52,7 @@ def render_combined_sunburst(df, metric):
             st.plotly_chart(fig, use_container_width=True)
 
 
-def render_combined_stacked_bar(df, metric):
-    level = st.radio("Select HS Level for Bar Charts", options=["HS4", "HS6"], horizontal=True)
+def render_combined_stacked_bar(df, metric, hs_level):
     st.markdown("### 📊 Combined Absolute Stacked Bar Chart")
 
     df['cmdCode'] = df['cmdCode'].astype(str)
@@ -62,9 +63,9 @@ def render_combined_stacked_bar(df, metric):
     df['countryFlow'] = df['reporterDesc'] + " (" + df['flowDesc'] + ")"
     df['year'] = pd.to_numeric(df.get('refYear', pd.NA), errors='coerce')
 
-    df = df[df[level].str.len() == (4 if level == 'HS4' else 6)]
+    df = df[df[hs_level].str.len() == (4 if hs_level == 'HS4' else 6)]
 
-    grouped = df.groupby(['year', 'flowDesc', level])[metric].sum().reset_index()
+    grouped = df.groupby(['year', 'flowDesc', hs_level])[metric].sum().reset_index()
     grouped['year_flow'] = grouped['year'].astype(str) + " / " + grouped['flowDesc'].str.capitalize()
 
     if not grouped.empty:
@@ -72,9 +73,9 @@ def render_combined_stacked_bar(df, metric):
             grouped,
             x='year_flow',
             y=metric,
-            color=level,
-            title=f"{level} Value by Flow and Year",
-            labels={metric: "Trade Volume", level: f"{level} Code"},
+            color=hs_level,
+            title=f"{hs_level} Value by Flow and Year",
+            labels={metric: "Trade Volume", hs_level: f"{hs_level} Code"},
             text_auto='.2s'
         )
         fig.update_layout(
@@ -87,11 +88,11 @@ def render_combined_stacked_bar(df, metric):
 
     st.markdown("### 📊 Combined Percentage Stacked Bar Chart")
 
-    grouped = df.groupby(['year', 'flowDesc', level])[metric].sum().reset_index()
+    grouped = df.groupby(['year', 'flowDesc', hs_level])[metric].sum().reset_index()
     grouped['year_flow'] = grouped['year'].astype(str) + " – " + grouped['flowDesc'].str.capitalize()
 
-    pivot = grouped.pivot(index='year_flow', columns=level, values=metric).fillna(0)
-    percent_df = pivot.div(pivot.sum(axis=1), axis=0).reset_index().melt(id_vars='year_flow', var_name=level, value_name='percentage')
+    pivot = grouped.pivot(index='year_flow', columns=hs_level, values=metric).fillna(0)
+    percent_df = pivot.div(pivot.sum(axis=1), axis=0).reset_index().melt(id_vars='year_flow', var_name=hs_level, value_name='percentage')
     percent_df['percentage'] *= 100
 
     if not percent_df.empty:
@@ -99,9 +100,9 @@ def render_combined_stacked_bar(df, metric):
             percent_df,
             x='year_flow',
             y='percentage',
-            color=level,
-            title=f"{level} Share by Flow and Year",
-            labels={'percentage': 'Percentage (%)', level: f"{level} Code"},
+            color=hs_level,
+            title=f"{hs_level} Share by Flow and Year",
+            labels={'percentage': 'Percentage (%)', hs_level: f"{hs_level} Code"},
             text_auto='.1f'
         )
         fig.update_layout(
@@ -149,5 +150,5 @@ if uploaded_files:
             (filtered_df['cmdCode'].str[:6].isin(selected_hs6))
         ]
 
-        render_combined_sunburst(final_df, metric)
-        render_combined_stacked_bar(final_df, metric)
+        render_combined_sunburst(final_df, metric, hs_level)
+        render_combined_stacked_bar(final_df, metric, hs_level)
