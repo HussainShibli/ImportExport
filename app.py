@@ -136,12 +136,15 @@ if uploaded_files:
 
         filtered_df = combined_df[combined_df['HS2'].isin(selected_hs2)]
 
-        # Two distinct selectors: one for HS4, one for HS6
-        hs4_options = sorted(filtered_df['HS4'].dropna().unique())
+        # HS4 selector – only codes with length == 4
+        hs4_options = sorted(set(code for code in filtered_df['HS4'].dropna().unique() if len(code) == 4))
         selected_hs4 = st.multiselect("Select HS4 Codes", options=hs4_options, default=hs4_options)
         
-        hs6_options = sorted(filtered_df[filtered_df['HS4'].isin(selected_hs4)]['cmdCode'].str[:6].dropna().unique())
+        # HS6 selector – only codes with length == 6 and belonging to selected HS4
+        hs6_candidates = filtered_df[filtered_df['HS4'].isin(selected_hs4)]['cmdCode'].str[:6]
+        hs6_options = sorted(set(code for code in hs6_candidates.dropna().unique() if len(code) == 6))
         selected_hs6 = st.multiselect("Select HS6 Codes (within selected HS4s)", options=hs6_options, default=hs6_options)
+
 
 
         final_df = filtered_df[
