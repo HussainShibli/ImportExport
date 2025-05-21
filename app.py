@@ -33,10 +33,10 @@ def load_data_for_hs2(hs2_code):
 
 def render_combined_sunburst(df, metric, hs_level):
     st.markdown(f"### \U0001F310 Sunburst Chart – {metric.upper()} by {hs_level}")
-    years = sorted(df['year'].dropna().unique())
+    years = sorted(df['refYear'].dropna().unique())
     cols = st.columns(len(years))
     for idx, year in enumerate(years):
-        year_df = df[df['year'] == year].copy()
+        year_df = df[df['refYear'] == year].copy()
         grouped = year_df.groupby(['countryFlow', 'HS4', 'HS6'])[metric].sum().reset_index()
         path = ['countryFlow', 'HS4'] if hs_level == 'HS4' else ['countryFlow', 'HS4', 'HS6']
         if hs_level == 'HS4':
@@ -50,8 +50,8 @@ def render_combined_sunburst(df, metric, hs_level):
 # Chart: Bar (absolute or percentage)
 def render_combined_stacked_bar(df, metric, hs_level, show="both"):
     df = df[df[hs_level].str.len() == (4 if hs_level == 'HS4' else 6)]
-    grouped = df.groupby(['year', 'flowDesc', hs_level])[metric].sum().reset_index()
-    grouped['year_flow'] = grouped['year'].astype(str) + " / " + grouped['flowDesc'].str.capitalize()
+    grouped = df.groupby(['refYear', 'flowDesc', hs_level])[metric].sum().reset_index()
+    grouped['year_flow'] = grouped['refYear'].astype(str) + " / " + grouped['flowDesc'].str.capitalize()
 
     if show in ["absolute", "both"]:
         st.markdown(f"### \U0001F4CA Absolute Stacked Bar – {metric.upper()} by {hs_level}")
@@ -81,8 +81,8 @@ def render_ratio_chart(df, hs_level):
     df = df[df['quantity'] > 0]
 
     df['valuePerUnit'] = df['value'] / df['quantity']
-    grouped = df.groupby(['year', 'flowDesc', hs_level])['valuePerUnit'].mean().reset_index()
-    fig = px.line(grouped, x='year', y='valuePerUnit', color=hs_level, line_group=hs_level,
+    grouped = df.groupby(['refYear', 'flowDesc', hs_level])['valuePerUnit'].mean().reset_index()
+    fig = px.line(grouped, x='refYear', y='valuePerUnit', color=hs_level, line_group=hs_level,
                   facet_col='flowDesc', markers=True,
                   title="Value per Unit (USD / altQty or netWgt) Over Time",
                   labels={'valuePerUnit': 'Value / Quantity', hs_level: f'{hs_level} Code'})
@@ -96,18 +96,15 @@ hs_level = st.radio("Select HS Level", options=["HS4", "HS6"], horizontal=True)
 
 combined_df = load_data_for_hs2(selected_hs2)
 if combined_df is not None:
-    if not combined_df['cmdCode'].astype(str).str.match(r'^\d+$').any():
-        st.warning("⚠️ Warning: 'cmdCode' column appears to contain non-numeric values. Please check your data format.")
-    
     combined_df['cmdCode'] = combined_df['cmdCode'].astype(str)
     combined_df['HS4'] = combined_df['cmdCode'].str[:4]
     combined_df['HS6'] = combined_df['cmdCode'].str[:6]
     combined_df['HS2'] = combined_df['cmdCode'].str[:2]
-    combined_df['value'] = combined_df.get('cifvalue', pd.NA).fillna(combined_df.get('fobvalue', pd.NA))
-    combined_df['reporterDesc'] = combined_df.get('reporterDesc', 'Unknown Country').fillna('Unknown Country')
+    combined_df['value'] = combined_df['cifvalue'].fillna(combined_df['fobvalue'])
+    combined_df['reporterDesc'] = combined_df['reporterDesc'].fillna('Unknown Country')
     combined_df['flowDesc'] = combined_df['flowDesc'].str.lower()
     combined_df['countryFlow'] = combined_df['reporterDesc'] + " (" + combined_df['flowDesc'] + ")"
-    combined_df['year'] = pd.to_numeric(combined_df.get('refYear', pd.NA), errors='coerce')
+    combined_df['refYear'] = pd.to_numeric(combined_df['refYear'], errors='coerce')
 
     hs4_options = sorted(set(code for code in combined_df['HS4'].dropna().unique() if len(code) == 4))
     selected_hs4 = st.multiselect("Select HS4 Codes", options=hs4_options, default=hs4_options)
