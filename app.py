@@ -106,6 +106,37 @@ if combined_df is not None:
                 fig.update_layout(barmode='stack', xaxis_title="Year – Flow", yaxis_title="Percentage (%)")
                 st.plotly_chart(fig, use_container_width=True)
 
+    def render_ratio_chart(df, hs_level):
+        st.markdown("## 📈 Value-to-Weight Ratio Over Time")
+    
+        df = df[df[hs_level].str.len() == (4 if hs_level == 'HS4' else 6)].copy()
+        df = df[df["netWgt"] > 0]  # Avoid divide-by-zero
+    
+        df['valuePerKg'] = df['value'] / df['netWgt']
+        grouped = df.groupby(['year', 'flowDesc', hs_level])['valuePerKg'].mean().reset_index()
+        grouped['year_flow'] = grouped['year'].astype(str) + " – " + grouped['flowDesc'].str.capitalize()
+    
+        fig = px.line(
+            grouped,
+            x='year',
+            y='valuePerKg',
+            color=hs_level,
+            line_group=hs_level,
+            facet_col='flowDesc',
+            markers=True,
+            title="Value per Kilogram Over Time by Flow and Code",
+            labels={'valuePerKg': 'Value / kg', hs_level: f'{hs_level} Code'}
+        )
+    
+        fig.update_layout(
+            xaxis_title="Year",
+            yaxis_title="USD per kg",
+            legend_title=f"{hs_level} Code",
+            height=500
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+
 st.markdown("## 🌐 Sunburst – Value (USD)")
 render_combined_sunburst(final_df, "value", hs_level)
 
@@ -123,3 +154,5 @@ render_combined_stacked_bar(final_df, "value", hs_level, show="percentage")
 
 st.markdown("## 📊 Percentage Bar Chart – Weight (kg)")
 render_combined_stacked_bar(final_df, "netWgt", hs_level, show="percentage")
+
+render_ratio_chart(final_df, hs_level)
