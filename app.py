@@ -58,7 +58,7 @@ def render_combined_sunburst(df, metric, hs_level):
 def render_combined_stacked_bar(df, metric, hs_level, show="both"):
     df = df[df[hs_level].str.len() == (4 if hs_level == 'HS4' else 6)]
     grouped = df.groupby(['refYear', 'flowDesc', hs_level])[metric].sum().reset_index()
-    grouped['year_flow'] = grouped['refYear'].astype(str) + " / " + grouped['flowDesc'].str.capitalize()
+    grouped['year_flow'] = grouped['refYear'].astype(str) + grouped['flowDesc'].str.lower().map({'export': ' A', 'import': ' B'})" / " + grouped['flowDesc'].str.capitalize()
 
     if show in ["absolute", "both"]:
         st.markdown(f"### \U0001F4CA Absolute Stacked Bar – {metric.upper()} by {hs_level}")
