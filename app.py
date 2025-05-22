@@ -31,36 +31,34 @@ def load_data_for_hs2(hs2_code):
 
 # Chart: Sunburst
 
-def render_combined_sunburst(df, metric, hs_level):
-    st.markdown(f"### \U0001F310 Sunburst Chart – {metric.upper()} by {hs_level}")
-    years = sorted(df['refYear'].dropna().unique())
-    cols = st.columns(len(years))
-    for idx, year in enumerate(years):
-        year_df = df[df['refYear'] == year].copy()
-        grouped = year_df.groupby(['countryFlow', 'HS4', 'HS6'])[metric].sum().reset_index()
-        path = ['countryFlow', 'HS4'] if hs_level == 'HS4' else ['countryFlow', 'HS4', 'HS6']
-        if hs_level == 'HS4':
-            grouped = grouped.groupby(['countryFlow', 'HS4'])[metric].sum().reset_index()
-        fig = px.sunburst(grouped, path=path, values=metric, color='countryFlow',
-                          title=f"{int(year)} ({'USD' if metric == 'value' else 'kg'})")
-        fig.update_traces(insidetextorientation='radial')
-        with cols[idx]:
-            st.plotly_chart(fig, use_container_width=True)
+def render_combined_sunburst(df, metric, hs_level, selected_year):
+    st.markdown(f"### \U0001F310 Sunburst Chart – {metric.upper()} by {hs_level} for {selected_year}")
+    year_df = df[df['refYear'] == selected_year].copy()
+    grouped = year_df.groupby(['countryFlow', 'HS4', 'HS6'])[metric].sum().reset_index()
+    path = ['countryFlow', 'HS4'] if hs_level == 'HS4' else ['countryFlow', 'HS4', 'HS6']
+    if hs_level == 'HS4':
+        grouped = grouped.groupby(['countryFlow', 'HS4'])[metric].sum().reset_index()
+    fig = px.sunburst(grouped, path=path, values=metric, color='countryFlow',
+                      title=f"{int(selected_year)} ({'USD' if metric == 'value' else 'kg'})")
+    fig.update_traces(insidetextorientation='radial')
+    st.plotly_chart(fig, use_container_width=True)
 
 # Chart: Bar (absolute or percentage)
-def render_combined_stacked_bar(df, metric, hs_level, show="both"):
+def render_combined_stacked_bar(df, metric, hs_level, show="both", selected_year=None):
     df = df[df[hs_level].str.len() == (4 if hs_level == 'HS4' else 6)]
+    if selected_year:
+        df = df[df['refYear'] == selected_year]
     grouped = df.groupby(['refYear', 'flowDesc', hs_level])[metric].sum().reset_index()
     grouped['year_flow'] = grouped['refYear'].astype(str) + " / " + grouped['flowDesc'].str.capitalize()
 
     if show in ["absolute", "both"]:
-        st.markdown(f"### \U0001F4CA Absolute Stacked Bar – {metric.upper()} by {hs_level}")
+        st.markdown(f"### \U0001F4CA Absolute Stacked Bar – {metric.upper()} by {hs_level} for {selected_year}")
         fig = px.bar(grouped, x='year_flow', y=metric, color=hs_level, text_auto='.2s')
         fig.update_layout(barmode='stack', xaxis_title="Year – Flow", yaxis_title=f"{metric} ({'USD' if metric == 'value' else 'kg'})")
         st.plotly_chart(fig, use_container_width=True)
 
     if show in ["percentage", "both"]:
-        st.markdown(f"### \U0001F4CA Percentage Stacked Bar – {metric.upper()} by {hs_level}")
+        st.markdown(f"### \U0001F4CA Percentage Stacked Bar – {metric.upper()} by {hs_level} for {selected_year}")
         pivot = grouped.pivot(index='year_flow', columns=hs_level, values=metric).fillna(0)
         percent_df = pivot.div(pivot.sum(axis=1), axis=0).reset_index().melt(id_vars='year_flow', var_name=hs_level, value_name='percentage')
         percent_df['percentage'] *= 100
@@ -70,9 +68,9 @@ def render_combined_stacked_bar(df, metric, hs_level, show="both"):
 
 # Chart: Value / Quantity Ratio using altQty unless it's zero, then use netWgt
 
-def render_ratio_chart(df, hs_level):
-    st.markdown("### \U0001F4C8 Value-to-Quantity Ratio Over Time (Value / altQty or netWgt)")
-    df = df[df[hs_level].str.len() == (4 if hs_level == 'HS4' else 6)].copy()
+def render_ratio_chart(df, hs_level, selected_year):
+    st.markdown(f"### \U0001F4C8 Value-to-Quantity Ratio for {selected_year} (Value / altQty or netWgt)")
+    df = df[(df[hs_level].str.len() == (4 if hs_level == 'HS4' else 6)) & (df['refYear'] == selected_year)].copy()
 
     df['quantity'] = df.apply(
         lambda row: row['altQty'] if pd.notnull(row['altQty']) and row['altQty'] > 0
@@ -100,13 +98,13 @@ if combined_df is not None:
     if 'reporterDesc' in combined_df.columns and 'flowDesc' in combined_df.columns:
         importers = combined_df[combined_df['flowDesc'].str.lower() == 'import']['reporterDesc'].unique()
         exporters = combined_df[combined_df['flowDesc'].str.lower() == 'export']['reporterDesc'].unique()
-        st.markdown(f"**📥 Importing Countries:** {', '.join(importers)}")
-        st.markdown(f"**📤 Exporting Countries:** {', '.join(exporters)}")
-  
+        st.markdown(f"**\U0001F4E5 Importing Countries:** {', '.join(importers)}")
+        st.markdown(f"**\U0001F4E4 Exporting Countries:** {', '.join(exporters)}")
+
     required_columns = ['cmdCode', 'cifvalue', 'fobvalue', 'reporterDesc', 'flowDesc', 'refYear', 'netWgt']
     missing_columns = [col for col in required_columns if col not in combined_df.columns]
     if missing_columns:
-        st.error(f"❌ Missing required columns: {', '.join(missing_columns)}")
+        st.error(f"\u274C Missing required columns: {', '.join(missing_columns)}")
         st.stop()
 
     combined_df['cmdCode'] = combined_df['cmdCode'].astype(str)
@@ -131,14 +129,18 @@ if combined_df is not None:
         (combined_df['HS6'].isin(selected_hs6))
     ]
 
-    # Render all graphs in desired order
-    render_combined_sunburst(final_df, "value", hs_level)
-    render_combined_sunburst(final_df, "netWgt", hs_level)
+    all_years = sorted(final_df['refYear'].dropna().unique())
+    if all_years:
+        selected_year = st.select_slider("Select Year", options=all_years, value=all_years[0])
 
-    render_combined_stacked_bar(final_df, "value", hs_level, show="absolute")
-    render_combined_stacked_bar(final_df, "netWgt", hs_level, show="absolute")
+        # Render charts only for the selected year
+        render_combined_sunburst(final_df, "value", hs_level, selected_year)
+        render_combined_sunburst(final_df, "netWgt", hs_level, selected_year)
 
-    render_combined_stacked_bar(final_df, "value", hs_level, show="percentage")
-    render_combined_stacked_bar(final_df, "netWgt", hs_level, show="percentage")
+        render_combined_stacked_bar(final_df, "value", hs_level, show="absolute", selected_year=selected_year)
+        render_combined_stacked_bar(final_df, "netWgt", hs_level, show="absolute", selected_year=selected_year)
 
-    render_ratio_chart(final_df, hs_level)
+        render_combined_stacked_bar(final_df, "value", hs_level, show="percentage", selected_year=selected_year)
+        render_combined_stacked_bar(final_df, "netWgt", hs_level, show="percentage", selected_year=selected_year)
+
+        render_ratio_chart(final_df, hs_level, selected_year)
