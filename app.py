@@ -98,7 +98,9 @@ def render_ratio_chart(df, hs_level, selected_year=None):
     df['valuePerUnit'] = df['value'] / df['quantity']
 
     grouped = df.groupby(['refYear', 'flowDesc', hs_level], sort=False)['valuePerUnit'].mean().reset_index()
-    grouped = grouped.sort_values(by=['refYear', 'flowDesc'], ascending=[True, False])
+    flow_order = {'export': 0, 'import': 1}
+    grouped['flow_order'] = grouped['flowDesc'].map(flow_order)
+    grouped = grouped.sort_values(by=['refYear', 'flow_order', hs_level])
 
     fig = px.line(grouped, x='refYear', y='valuePerUnit', color=hs_level, line_group=hs_level,
                   facet_col='flowDesc', markers=True,
@@ -175,5 +177,4 @@ if combined_df is not None:
         render_combined_stacked_bar(final_df[final_df['refYear'].isin(selected_years)], "netWgt", hs_level, show="percentage")
 
         st.markdown("## 📈 Value to Quantity Ratio Chart (Combined Years)")
-        ratio_df = final_df[final_df['refYear'].isin(selected_years)]
-        render_ratio_chart(ratio_df, hs_level)
+        render_ratio_chart(final_df[final_df['refYear'].isin(selected_years)], hs_level)
