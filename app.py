@@ -134,6 +134,10 @@ def render_ratio_chart(df, hs_level, selected_year=None):
     st.plotly_chart(fig, use_container_width=True)
 
 # MAIN APP FLOW
+show_sunburst = st.checkbox("Show Sunburst Charts", value=True)
+show_absolute_bar = st.checkbox("Show Absolute Bar Charts", value=True)
+show_percentage_bar = st.checkbox("Show Percentage Bar Charts", value=True)
+show_ratio_chart = st.checkbox("Show Value-to-Quantity Ratio Chart", value=True)
 available_hs2 = get_hs2_options()
 selected_hs2 = st.selectbox("Select HS2 Code (from folder)", available_hs2)
 hs_level = st.radio("Select HS Level", options=["HS4", "HS6"], horizontal=True)
@@ -185,7 +189,7 @@ if combined_df is not None:
                     selected_years.append(y)
 
         if show_sunburst:
-        st.markdown("## 🌐 Sunburst Charts by Year")
+            st.markdown("## 🌐 Sunburst Charts by Year")
         for year in selected_years:
             st.markdown(f"### Year {year}")
             col1, col2 = st.columns(2)
@@ -195,15 +199,15 @@ if combined_df is not None:
                 render_combined_sunburst(final_df, "netWgt", hs_level, year)
 
         if show_absolute_bar:
-        st.markdown("## 📊 Absolute Stacked Bar Chart (Combined Years)")
+            st.markdown("## 📊 Absolute Stacked Bar Chart (Combined Years)")
         render_combined_stacked_bar(final_df[final_df['refYear'].isin(selected_years)], "value", hs_level, show="absolute")
         render_combined_stacked_bar(final_df[final_df['refYear'].isin(selected_years)], "netWgt", hs_level, show="absolute")
 
         if show_percentage_bar:
-        st.markdown("## 📊 Percentage Stacked Bar Chart (Combined Years)")
+            st.markdown("## 📊 Percentage Stacked Bar Chart (Combined Years)")
         render_combined_stacked_bar(final_df[final_df['refYear'].isin(selected_years)], "value", hs_level, show="percentage")
         render_combined_stacked_bar(final_df[final_df['refYear'].isin(selected_years)], "netWgt", hs_level, show="percentage")
 
         if show_ratio_chart:
-        st.markdown("## 📈 Value to Quantity Ratio Chart (Combined Years)")
+            st.markdown("## 📈 Value to Quantity Ratio Chart (Combined Years)")
         render_ratio_chart(final_df[final_df['refYear'].isin(selected_years)], hs_level)
