@@ -137,7 +137,7 @@ if combined_df is not None:
                 if st.toggle(str(y), value=(y == all_years[0])):
                     selected_years.append(y)
 
-        st.markdown("## \U0001F310 Sunburst Charts by Year")
+        st.markdown("## 🌐 Sunburst Charts by Year")
         for year in selected_years:
             st.markdown(f"### Year {year}")
             col1, col2 = st.columns(2)
@@ -146,25 +146,25 @@ if combined_df is not None:
             with col2:
                 render_combined_sunburst(final_df, "netWgt", hs_level, year)
 
-        st.markdown("## \U0001F4CA Absolute Stacked Bar Charts by Year")
-        for year in selected_years:
-            st.markdown(f"### Year {year}")
-            col1, col2 = st.columns(2)
-            with col1:
-                render_combined_stacked_bar(final_df, "value", hs_level, show="absolute", selected_year=year)
-            with col2:
-                render_combined_stacked_bar(final_df, "netWgt", hs_level, show="absolute", selected_year=year)
+        st.markdown("## 📊 Absolute Stacked Bar Chart (Combined Years)")
+        render_combined_stacked_bar(final_df[final_df['refYear'].isin(selected_years)], "value", hs_level, show="absolute")
+        render_combined_stacked_bar(final_df[final_df['refYear'].isin(selected_years)], "netWgt", hs_level, show="absolute")
 
-        st.markdown("## \U0001F4CA Percentage Stacked Bar Charts by Year")
-        for year in selected_years:
-            st.markdown(f"### Year {year}")
-            col1, col2 = st.columns(2)
-            with col1:
-                render_combined_stacked_bar(final_df, "value", hs_level, show="percentage", selected_year=year)
-            with col2:
-                render_combined_stacked_bar(final_df, "netWgt", hs_level, show="percentage", selected_year=year)
+        st.markdown("## 📊 Percentage Stacked Bar Chart (Combined Years)")
+        render_combined_stacked_bar(final_df[final_df['refYear'].isin(selected_years)], "value", hs_level, show="percentage")
+        render_combined_stacked_bar(final_df[final_df['refYear'].isin(selected_years)], "netWgt", hs_level, show="percentage")
 
-        st.markdown("## \U0001F4C8 Value to Quantity Ratio Charts by Year")
-        for year in selected_years:
-            st.markdown(f"### Year {year}")
-            render_ratio_chart(final_df, hs_level, year)
+        st.markdown("## 📈 Value to Quantity Ratio Chart (Combined Years)")
+        ratio_df = final_df[final_df['refYear'].isin(selected_years)]
+        df_filtered = ratio_df[(ratio_df[hs_level].str.len() == (4 if hs_level == 'HS4' else 6))].copy()
+        df_filtered['quantity'] = df_filtered.apply(
+            lambda row: row['altQty'] if pd.notnull(row['altQty']) and row['altQty'] > 0 else row['netWgt'], axis=1)
+        df_filtered = df_filtered[df_filtered['quantity'] > 0]
+        df_filtered['valuePerUnit'] = df_filtered['value'] / df_filtered['quantity']
+        grouped = df_filtered.groupby(['refYear', 'flowDesc', hs_level])['valuePerUnit'].mean().reset_index()
+        fig = px.line(grouped, x='refYear', y='valuePerUnit', color=hs_level, line_group=hs_level,
+                      facet_col='flowDesc', markers=True,
+                      title="Value per Unit (USD / altQty or netWgt) Over Time",
+                      labels={'valuePerUnit': 'Value / Quantity', hs_level: f'{hs_level} Code'})
+        fig.update_layout(xaxis_title="Year", yaxis_title="USD per Unit", height=500)
+        st.plotly_chart(fig, use_container_width=True)
