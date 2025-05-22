@@ -50,51 +50,58 @@ def render_combined_stacked_bar(df, metric, hs_level, show="both", selected_year
         df = df[df['refYear'] == selected_year]
     grouped = df.groupby(['refYear', 'flowDesc', hs_level], sort=False)[metric].sum().reset_index()
     grouped = grouped.sort_values(by=['refYear', 'flowDesc'], ascending=[True, False])
-    grouped['year_flow'] = grouped['flowDesc'].str.capitalize() + "<br>" + grouped['refYear'].astype(str)" / " + grouped['flowDesc'].str.capitalize()
+    grouped['year_flow'] = grouped['refYear'].astype(str) + " / " + grouped['flowDesc'].str.capitalize()
 
     if show in ["absolute", "both"]:
-        st.markdown(f"### \U0001F4CA Absolute Stacked Bar – {metric.upper()} by {hs_level} for {selected_year}")
+        st.markdown(f"### 📊 Absolute Stacked Bar – {metric.upper()} by {hs_level}")
         fig = px.bar(grouped, x='year_flow', y=metric, color=hs_level, text_auto='.2s')
         fig.update_layout(
-            xaxis_title="",
-            yaxis_title=f"{metric} ({'USD' if metric == 'value' else 'kg'})",
             barmode='stack',
+            xaxis_title="Year / Flow",
+            yaxis_title=f"{metric} ({'USD' if metric == 'value' else 'kg'})",
             height=500,
-            xaxis=dict(tickmode='array', tickvals=grouped['year_flow'].tolist(), ticktext=grouped['year_flow'].tolist())
+            xaxis={'type': 'category'}
         )
-        fig.update_layout(barmode='stack', xaxis_title="Year – Flow", yaxis_title=f"{metric} ({'USD' if metric == 'value' else 'kg'})")
         st.plotly_chart(fig, use_container_width=True)
 
     if show in ["percentage", "both"]:
-        st.markdown(f"### \U0001F4CA Percentage Stacked Bar – {metric.upper()} by {hs_level} for {selected_year}")
+        st.markdown(f"### 📊 Percentage Stacked Bar – {metric.upper()} by {hs_level}")
         pivot = grouped.pivot(index='year_flow', columns=hs_level, values=metric).fillna(0)
         percent_df = pivot.div(pivot.sum(axis=1), axis=0).reset_index().melt(id_vars='year_flow', var_name=hs_level, value_name='percentage')
         percent_df['percentage'] *= 100
         fig = px.bar(percent_df, x='year_flow', y='percentage', color=hs_level, text_auto='.1f')
-        fig.update_layout(barmode='stack', xaxis_title="Year – Flow", yaxis_title="Percentage (%)")
+        fig.update_layout(
+            barmode='stack',
+            xaxis_title="Year / Flow",
+            yaxis_title="Percentage (%)",
+            height=500,
+            xaxis={'type': 'category'}
+        )
         st.plotly_chart(fig, use_container_width=True)
 
 # Chart: Value / Quantity Ratio using altQty unless it's zero, then use netWgt
 
-def render_ratio_chart(df, hs_level, selected_year):
-    st.markdown(f"### \U0001F4C8 Value-to-Quantity Ratio for {selected_year} (Value / altQty or netWgt)")
-    df = df[(df[hs_level].str.len() == (4 if hs_level == 'HS4' else 6)) & (df['refYear'] == selected_year)].copy()
+def render_ratio_chart(df, hs_level, selected_year=None):
+    if selected_year:
+        st.markdown(f"### 📈 Value-to-Quantity Ratio for {selected_year} (Value / altQty or netWgt)")
+        df = df[(df[hs_level].str.len() == (4 if hs_level == 'HS4' else 6)) & (df['refYear'] == selected_year)].copy()
+    else:
+        st.markdown("### 📈 Value-to-Quantity Ratio Chart (Combined Years)")
+        df = df[(df[hs_level].str.len() == (4 if hs_level == 'HS4' else 6))].copy()
 
     df['quantity'] = df.apply(
-        lambda row: row['altQty'] if pd.notnull(row['altQty']) and row['altQty'] > 0
-        else row['netWgt'], axis=1
-    )
+        lambda row: row['altQty'] if pd.notnull(row['altQty']) and row['altQty'] > 0 else row['netWgt'], axis=1)
     df = df[df['quantity'] > 0]
-
     df['valuePerUnit'] = df['value'] / df['quantity']
-    grouped = df.groupby(['refYear', 'flowDesc', hs_level])['valuePerUnit'].mean().reset_index()
+
+    grouped = df.groupby(['refYear', 'flowDesc', hs_level], sort=False)['valuePerUnit'].mean().reset_index()
+    grouped = grouped.sort_values(by=['refYear', 'flowDesc'], ascending=[True, False])
+
     fig = px.line(grouped, x='refYear', y='valuePerUnit', color=hs_level, line_group=hs_level,
-                      facet_col='flowDesc', markers=True,
-                      title="Value per Unit (USD / altQty or netWgt) Over Time",
-                      labels={'valuePerUnit': 'Value / Quantity', hs_level: f'{hs_level} Code'})
-        fig.update_layout(xaxis_title="Year", yaxis_title="USD per Unit", height=500, xaxis_type='category') Over Time",
+                  facet_col='flowDesc', markers=True,
+                  title="Value per Unit (USD / altQty or netWgt) Over Time",
                   labels={'valuePerUnit': 'Value / Quantity', hs_level: f'{hs_level} Code'})
-    fig.update_layout(xaxis_title="Year", yaxis_title="USD per Unit", height=500)
+    fig.update_layout(xaxis_title="Year", yaxis_title="USD per Unit", height=500, xaxis_type='category')
     st.plotly_chart(fig, use_container_width=True)
 
 # MAIN APP FLOW
@@ -166,16 +173,4 @@ if combined_df is not None:
 
         st.markdown("## 📈 Value to Quantity Ratio Chart (Combined Years)")
         ratio_df = final_df[final_df['refYear'].isin(selected_years)]
-        df_filtered = ratio_df[(ratio_df[hs_level].str.len() == (4 if hs_level == 'HS4' else 6))].copy()
-        df_filtered['quantity'] = df_filtered.apply(
-            lambda row: row['altQty'] if pd.notnull(row['altQty']) and row['altQty'] > 0 else row['netWgt'], axis=1)
-        df_filtered = df_filtered[df_filtered['quantity'] > 0]
-        df_filtered['valuePerUnit'] = df_filtered['value'] / df_filtered['quantity']
-        grouped = df_filtered.groupby(['refYear', 'flowDesc', hs_level], sort=False)['valuePerUnit'].mean().reset_index()
-        grouped = grouped.sort_values(by=['refYear', 'flowDesc'], ascending=[True, False])
-        fig = px.line(grouped, x='refYear', y='valuePerUnit', color=hs_level, line_group=hs_level,
-                      facet_col='flowDesc', markers=True,
-                      title="Value per Unit (USD / altQty or netWgt) Over Time",
-                      labels={'valuePerUnit': 'Value / Quantity', hs_level: f'{hs_level} Code'})
-        fig.update_layout(xaxis_title="Year", yaxis_title="USD per Unit", height=500)
-        st.plotly_chart(fig, use_container_width=True)
+        render_ratio_chart(ratio_df, hs_level)
