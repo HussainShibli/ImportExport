@@ -113,7 +113,7 @@ def render_ratio_chart(df, hs_level, selected_year=None):
         markers=True,
         title="Value per Unit (USD / altQty or netWgt) Over Time",
         labels={'valuePerUnit': 'Value / Quantity', hs_level: f'{hs_level} Code'}
-    ) Over Time")}
+    )
     fig.update_layout(
         xaxis_title="Year",
         yaxis_title="USD per Unit",
