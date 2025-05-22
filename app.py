@@ -64,7 +64,6 @@ def render_combined_stacked_bar(df, metric, hs_level, show="both", selected_year
             legend=dict(orientation='h', y=-0.3, x=0.5, xanchor='center'),
             xaxis_title="Year / Flow",
             yaxis_title=f"{metric} ({'USD' if metric == 'value' else 'kg'})",
-            legend=dict(orientation='v', y=1, x=1.02, traceorder='normal'),
             margin=dict(b=120),
             height=500,
             xaxis={'type': 'category', 'categoryorder': 'array', 'categoryarray': category_order}
