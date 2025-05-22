@@ -53,7 +53,7 @@ def render_combined_stacked_bar(df, metric, hs_level, show="both", selected_year
     grouped['flow_order'] = grouped['flowDesc'].map(flow_order)
     grouped = grouped.sort_values(by=['refYear', 'flow_order', hs_level])
     
-    grouped['year_flow'] = grouped['refYear'].astype(str) + " / " + grouped['flowDesc'].str.capitalize()
+    grouped['year_flow'] = grouped['flowDesc'].str.capitalize() + "<br>" + grouped['refYear'].astype(str)
 
     if show in ["absolute", "both"]:
         st.markdown(f"### 📊 Absolute Stacked Bar – {metric.upper()} by {hs_level}")
