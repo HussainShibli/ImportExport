@@ -94,7 +94,6 @@ hs_level = st.radio("Select HS Level", options=["HS4", "HS6"], horizontal=True)
 
 combined_df = load_data_for_hs2(selected_hs2)
 if combined_df is not None:
-    # Show importing and exporting country info if present
     if 'reporterDesc' in combined_df.columns and 'flowDesc' in combined_df.columns:
         importers = combined_df[combined_df['flowDesc'].str.lower() == 'import']['reporterDesc'].unique()
         exporters = combined_df[combined_df['flowDesc'].str.lower() == 'export']['reporterDesc'].unique()
@@ -131,26 +130,41 @@ if combined_df is not None:
 
     all_years = sorted(final_df['refYear'].dropna().unique())
     if all_years:
-        selected_years = st.columns(len(all_years))
-        year_selection = {}
+        year_cols = st.columns(len(all_years))
+        selected_years = []
         for i, y in enumerate(all_years):
-            with selected_years[i]:
-                year_selection[y] = st.toggle(str(y), value=(y == all_years[0]))
-        active_years = [y for y, selected in year_selection.items() if selected]
+            with year_cols[i]:
+                if st.toggle(str(y), value=(y == all_years[0])):
+                    selected_years.append(y)
 
-        # Render charts only for active years in vertical sequence
-        for selected_year in active_years:
-            st.markdown(f"#### 📅 Year: {selected_year}")
-            render_combined_sunburst(final_df, "value", hs_level, selected_year)
-            render_combined_sunburst(final_df, "netWgt", hs_level, selected_year)
+        st.markdown("## \U0001F310 Sunburst Charts by Year")
+        for year in selected_years:
+            st.markdown(f"### Year {year}")
+            col1, col2 = st.columns(2)
+            with col1:
+                render_combined_sunburst(final_df, "value", hs_level, year)
+            with col2:
+                render_combined_sunburst(final_df, "netWgt", hs_level, year)
 
-        for selected_year in active_years:
-            render_combined_stacked_bar(final_df, "value", hs_level, show="absolute", selected_year=selected_year)
-            render_combined_stacked_bar(final_df, "netWgt", hs_level, show="absolute", selected_year=selected_year)
+        st.markdown("## \U0001F4CA Absolute Stacked Bar Charts by Year")
+        for year in selected_years:
+            st.markdown(f"### Year {year}")
+            col1, col2 = st.columns(2)
+            with col1:
+                render_combined_stacked_bar(final_df, "value", hs_level, show="absolute", selected_year=year)
+            with col2:
+                render_combined_stacked_bar(final_df, "netWgt", hs_level, show="absolute", selected_year=year)
 
-        for selected_year in active_years:
-            render_combined_stacked_bar(final_df, "value", hs_level, show="percentage", selected_year=selected_year)
-            render_combined_stacked_bar(final_df, "netWgt", hs_level, show="percentage", selected_year=selected_year)
+        st.markdown("## \U0001F4CA Percentage Stacked Bar Charts by Year")
+        for year in selected_years:
+            st.markdown(f"### Year {year}")
+            col1, col2 = st.columns(2)
+            with col1:
+                render_combined_stacked_bar(final_df, "value", hs_level, show="percentage", selected_year=year)
+            with col2:
+                render_combined_stacked_bar(final_df, "netWgt", hs_level, show="percentage", selected_year=year)
 
-        for selected_year in active_years:
-            render_ratio_chart(final_df, hs_level, selected_year)
+        st.markdown("## \U0001F4C8 Value to Quantity Ratio Charts by Year")
+        for year in selected_years:
+            st.markdown(f"### Year {year}")
+            render_ratio_chart(final_df, hs_level, year)
