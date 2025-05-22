@@ -48,12 +48,20 @@ def render_combined_stacked_bar(df, metric, hs_level, show="both", selected_year
     df = df[df[hs_level].str.len() == (4 if hs_level == 'HS4' else 6)]
     if selected_year:
         df = df[df['refYear'] == selected_year]
-    grouped = df.groupby(['refYear', 'flowDesc', hs_level])[metric].sum().reset_index()
-    grouped['year_flow'] = grouped['refYear'].astype(str) + " / " + grouped['flowDesc'].str.capitalize()
+    grouped = df.groupby(['refYear', 'flowDesc', hs_level], sort=False)[metric].sum().reset_index()
+    grouped = grouped.sort_values(by=['refYear', 'flowDesc'], ascending=[True, False])
+    grouped['year_flow'] = grouped['flowDesc'].str.capitalize() + "<br>" + grouped['refYear'].astype(str)" / " + grouped['flowDesc'].str.capitalize()
 
     if show in ["absolute", "both"]:
         st.markdown(f"### \U0001F4CA Absolute Stacked Bar – {metric.upper()} by {hs_level} for {selected_year}")
         fig = px.bar(grouped, x='year_flow', y=metric, color=hs_level, text_auto='.2s')
+        fig.update_layout(
+            xaxis_title="",
+            yaxis_title=f"{metric} ({'USD' if metric == 'value' else 'kg'})",
+            barmode='stack',
+            height=500,
+            xaxis=dict(tickmode='array', tickvals=grouped['year_flow'].tolist(), ticktext=grouped['year_flow'].tolist())
+        )
         fig.update_layout(barmode='stack', xaxis_title="Year – Flow", yaxis_title=f"{metric} ({'USD' if metric == 'value' else 'kg'})")
         st.plotly_chart(fig, use_container_width=True)
 
