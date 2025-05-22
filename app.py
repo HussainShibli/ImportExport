@@ -6,7 +6,13 @@ import os
 DATA_FOLDER = "data"  # Folder containing HS2_Import.csv and HS2_Export.csv files
 
 st.set_page_config(page_title="HS Code Import/Export Analyzer", layout="wide")
-st.title("\U0001F4E6 HS Code Import/Export Analyzer (Folder Mode)")
+st.title("📦 HS Code Import/Export Analyzer (Folder Mode)")
+
+# Chart toggles
+show_sunburst = st.checkbox("Show Sunburst Charts", value=True)
+show_absolute_bar = st.checkbox("Show Absolute Bar Charts", value=True)
+show_percentage_bar = st.checkbox("Show Percentage Bar Charts", value=True)
+show_ratio_chart = st.checkbox("Show Value-to-Quantity Ratio Chart", value=True)
 st.markdown("Select an HS2 code to visualize its Import/Export data from local files.")
 
 # Get available HS2 codes from filenames in folder
@@ -178,6 +184,7 @@ if combined_df is not None:
                 if st.toggle(str(y), value=(y == all_years[0])):
                     selected_years.append(y)
 
+        if show_sunburst:
         st.markdown("## 🌐 Sunburst Charts by Year")
         for year in selected_years:
             st.markdown(f"### Year {year}")
@@ -187,13 +194,16 @@ if combined_df is not None:
             with col2:
                 render_combined_sunburst(final_df, "netWgt", hs_level, year)
 
+        if show_absolute_bar:
         st.markdown("## 📊 Absolute Stacked Bar Chart (Combined Years)")
         render_combined_stacked_bar(final_df[final_df['refYear'].isin(selected_years)], "value", hs_level, show="absolute")
         render_combined_stacked_bar(final_df[final_df['refYear'].isin(selected_years)], "netWgt", hs_level, show="absolute")
 
+        if show_percentage_bar:
         st.markdown("## 📊 Percentage Stacked Bar Chart (Combined Years)")
         render_combined_stacked_bar(final_df[final_df['refYear'].isin(selected_years)], "value", hs_level, show="percentage")
         render_combined_stacked_bar(final_df[final_df['refYear'].isin(selected_years)], "netWgt", hs_level, show="percentage")
 
+        if show_ratio_chart:
         st.markdown("## 📈 Value to Quantity Ratio Chart (Combined Years)")
         render_ratio_chart(final_df[final_df['refYear'].isin(selected_years)], hs_level)
