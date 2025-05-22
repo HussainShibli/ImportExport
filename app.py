@@ -138,16 +138,19 @@ if combined_df is not None:
                 year_selection[y] = st.toggle(str(y), value=(y == all_years[0]))
         active_years = [y for y, selected in year_selection.items() if selected]
 
-        # Render charts only for active years in a row layout
+        # Render charts only for active years in vertical sequence
         for selected_year in active_years:
             st.markdown(f"#### 📅 Year: {selected_year}")
-            col1, col2 = st.columns(2)
-            with col1:
-                render_combined_sunburst(final_df, "value", hs_level, selected_year)
-                render_combined_stacked_bar(final_df, "value", hs_level, show="absolute", selected_year=selected_year)
-                render_combined_stacked_bar(final_df, "value", hs_level, show="percentage", selected_year=selected_year)
-            with col2:
-                render_combined_sunburst(final_df, "netWgt", hs_level, selected_year)
-                render_combined_stacked_bar(final_df, "netWgt", hs_level, show="absolute", selected_year=selected_year)
-                render_combined_stacked_bar(final_df, "netWgt", hs_level, show="percentage", selected_year=selected_year)
+            render_combined_sunburst(final_df, "value", hs_level, selected_year)
+            render_combined_sunburst(final_df, "netWgt", hs_level, selected_year)
+
+        for selected_year in active_years:
+            render_combined_stacked_bar(final_df, "value", hs_level, show="absolute", selected_year=selected_year)
+            render_combined_stacked_bar(final_df, "netWgt", hs_level, show="absolute", selected_year=selected_year)
+
+        for selected_year in active_years:
+            render_combined_stacked_bar(final_df, "value", hs_level, show="percentage", selected_year=selected_year)
+            render_combined_stacked_bar(final_df, "netWgt", hs_level, show="percentage", selected_year=selected_year)
+
+        for selected_year in active_years:
             render_ratio_chart(final_df, hs_level, selected_year)
