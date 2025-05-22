@@ -63,7 +63,7 @@ def render_combined_stacked_bar(df, metric, hs_level, show="both", selected_year
             barmode='stack',
             legend=dict(orientation='h', y=-0.3, x=0.5, xanchor='center'),
             xaxis_title="Year / Flow",
-            yaxis_title=f"{metric} ({'USD' if metric == 'value' else 'kg'},
+            yaxis_title=f"{metric} ({'USD' if metric == 'value' else 'kg'})",
             legend=dict(orientation='v', y=1, x=1.02, traceorder='normal'),
             margin=dict(b=120)",
             height=500,
@@ -152,7 +152,6 @@ if combined_df is not None:
     combined_df['fobvalue'] = pd.to_numeric(combined_df['fobvalue'], errors='coerce')
     combined_df['value'] = combined_df.apply(
         lambda row: row['fobvalue'] if pd.isna(row['cifvalue']) or row['cifvalue'] == 0 else row['cifvalue'], axis=1
-    ) or row['cifvalue'] == 0 else row['cifvalue'], axis=1
     )
     combined_df['reporterDesc'] = combined_df['reporterDesc'].fillna('Unknown Country')
     combined_df['flowDesc'] = combined_df['flowDesc'].str.lower()
