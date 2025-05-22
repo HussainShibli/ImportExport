@@ -146,7 +146,7 @@ if combined_df is not None:
     combined_df['HS6'] = combined_df['cmdCode'].str[:6]
     combined_df['HS2'] = combined_df['cmdCode'].str[:2]
     combined_df['value'] = combined_df.apply(
-        lambda row: row['fobvalue'] if row['cifvalue'] == 0 else (row['cifvalue'] if pd.notnull(row['cifvalue']) else row['fobvalue']), axis=1
+        lambda row: row['fobvalue'] if pd.isna(row['cifvalue']) or row['cifvalue'] == 0 else row['cifvalue'], axis=1
     )
     combined_df['reporterDesc'] = combined_df['reporterDesc'].fillna('Unknown Country')
     combined_df['flowDesc'] = combined_df['flowDesc'].str.lower()
