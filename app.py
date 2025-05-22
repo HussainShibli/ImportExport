@@ -51,8 +51,8 @@ def render_combined_stacked_bar(df, metric, hs_level, show="both", selected_year
     grouped = df.groupby(['refYear', 'flowDesc', hs_level])[metric].sum().reset_index()
     flow_order = {'export': 0, 'import': 1}
     grouped['flow_order'] = grouped['flowDesc'].map(flow_order)
-    grouped = grouped.sort_values(by=['refYear', 'flow_order'])
-    grouped = grouped.sort_values(by=['refYear', 'flowDesc'], ascending=[True, False])
+    grouped = grouped.sort_values(by=['refYear', 'flow_order', hs_level])
+    
     grouped['year_flow'] = grouped['refYear'].astype(str) + " / " + grouped['flowDesc'].str.capitalize()
 
     if show in ["absolute", "both"]:
