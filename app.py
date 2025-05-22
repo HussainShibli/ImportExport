@@ -106,8 +106,14 @@ def render_ratio_chart(df, hs_level, selected_year=None):
     fig = px.line(grouped, x='refYear', y='valuePerUnit', color=hs_level, line_group=hs_level,
                   facet_col='flowDesc', markers=True,
                   title="Value per Unit (USD / altQty or netWgt) Over Time",
+                  labels={'valuePerUnit': 'Value / Quantity', hs_level: f'{hs_level} Code'}) Over Time",
                   labels={'valuePerUnit': 'Value / Quantity', hs_level: f'{hs_level} Code'})
-    fig.update_layout(xaxis_title="Year", yaxis_title="USD per Unit", height=500, xaxis_type='category')
+    fig.update_layout(
+        xaxis_title="Year",
+        yaxis_title="USD per Unit",
+        height=500,
+        xaxis={'type': 'category', 'categoryorder': 'array', 'categoryarray': sorted(grouped['refYear'].unique().tolist())}
+    )
     st.plotly_chart(fig, use_container_width=True)
 
 # MAIN APP FLOW
