@@ -9,10 +9,10 @@ st.set_page_config(page_title="HS Code Import/Export Analyzer", layout="wide")
 st.title("📦 HS Code Import/Export Analyzer (Folder Mode)")
 
 # Chart toggles
-show_sunburst = st.checkbox("Show Sunburst Charts", value=True)
-show_absolute_bar = st.checkbox("Show Absolute Bar Charts", value=True)
-show_percentage_bar = st.checkbox("Show Percentage Bar Charts", value=True)
-show_ratio_chart = st.checkbox("Show Value-to-Quantity Ratio Chart", value=True)
+show_sunburst = st.checkbox("Show Sunburst Charts", value=True, key="sunburst")
+show_absolute_bar = st.checkbox("Show Absolute Bar Charts", value=True, key="absolute")
+show_percentage_bar = st.checkbox("Show Percentage Bar Charts", value=True, key="percentage")
+show_ratio_chart = st.checkbox("Show Value-to-Quantity Ratio Chart", value=True, key="ratio")
 st.markdown("Select an HS2 code to visualize its Import/Export data from local files.")
 
 # Get available HS2 codes from filenames in folder
