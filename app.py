@@ -8,6 +8,13 @@ DATA_FOLDER = "data"  # Folder containing HS2_Import.csv and HS2_Export.csv file
 st.set_page_config(page_title="HS Code Import/Export Analyzer", layout="wide")
 st.title("📦 HS Code Import/Export Analyzer (Folder Mode)")
 
+# Chart toggles
+show_sunburst = st.checkbox("Show Sunburst Charts", value=True, key="sunburst")
+show_absolute_bar = st.checkbox("Show Absolute Bar Charts", value=True, key="absolute")
+show_percentage_bar = st.checkbox("Show Percentage Bar Charts", value=True, key="percentage")
+show_ratio_chart = st.checkbox("Show Value-to-Quantity Ratio Chart", value=True, key="ratio")
+st.markdown("Select an HS2 code to visualize its Import/Export data from local files.")
+
 # Get available HS2 codes from filenames in folder
 def get_hs2_options():
     files = os.listdir(DATA_FOLDER)
@@ -127,10 +134,6 @@ def render_ratio_chart(df, hs_level, selected_year=None):
     st.plotly_chart(fig, use_container_width=True)
 
 # MAIN APP FLOW
-show_sunburst = st.checkbox("Show Sunburst Charts", value=True)
-show_absolute_bar = st.checkbox("Show Absolute Bar Charts", value=True)
-show_percentage_bar = st.checkbox("Show Percentage Bar Charts", value=True)
-show_ratio_chart = st.checkbox("Show Value-to-Quantity Ratio Chart", value=True)
 available_hs2 = get_hs2_options()
 selected_hs2 = st.selectbox("Select HS2 Code (from folder)", available_hs2)
 hs_level = st.radio("Select HS Level", options=["HS4", "HS6"], horizontal=True)
