@@ -186,24 +186,24 @@ if combined_df is not None:
 
         if show_sunburst:
             st.markdown("## 🌐 Sunburst Charts by Year")
-        for year in selected_years:
-            st.markdown(f"### Year {year}")
-            col1, col2 = st.columns(2)
-            with col1:
-                render_combined_sunburst(final_df, "value", hs_level, year)
-            with col2:
-                render_combined_sunburst(final_df, "netWgt", hs_level, year)
+            for year in selected_years:
+                st.markdown(f"### Year {year}")
+                col1, col2 = st.columns(2)
+                with col1:
+                    render_combined_sunburst(final_df, "value", hs_level, year)
+                with col2:
+                    render_combined_sunburst(final_df, "netWgt", hs_level, year)
 
         if show_absolute_bar:
             st.markdown("## 📊 Absolute Stacked Bar Chart (Combined Years)")
-        render_combined_stacked_bar(final_df[final_df['refYear'].isin(selected_years)], "value", hs_level, show="absolute")
-        render_combined_stacked_bar(final_df[final_df['refYear'].isin(selected_years)], "netWgt", hs_level, show="absolute")
+            render_combined_stacked_bar(final_df[final_df['refYear'].isin(selected_years)], "value", hs_level, show="absolute")
+            render_combined_stacked_bar(final_df[final_df['refYear'].isin(selected_years)], "netWgt", hs_level, show="absolute")
 
         if show_percentage_bar:
             st.markdown("## 📊 Percentage Stacked Bar Chart (Combined Years)")
-        render_combined_stacked_bar(final_df[final_df['refYear'].isin(selected_years)], "value", hs_level, show="percentage")
-        render_combined_stacked_bar(final_df[final_df['refYear'].isin(selected_years)], "netWgt", hs_level, show="percentage")
+            render_combined_stacked_bar(final_df[final_df['refYear'].isin(selected_years)], "value", hs_level, show="percentage")
+            render_combined_stacked_bar(final_df[final_df['refYear'].isin(selected_years)], "netWgt", hs_level, show="percentage")
 
         if show_ratio_chart:
             st.markdown("## 📈 Value to Quantity Ratio Chart (Combined Years)")
-        render_ratio_chart(final_df[final_df['refYear'].isin(selected_years)], hs_level)
+            render_ratio_chart(final_df[final_df['refYear'].isin(selected_years)], hs_level)
