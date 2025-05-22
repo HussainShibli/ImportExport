@@ -45,10 +45,11 @@ def render_combined_sunburst(df, metric, hs_level, selected_year):
 
 # Chart: Bar (absolute or percentage)
 def render_combined_stacked_bar(df, metric, hs_level, show="both", selected_year=None):
-    df = df[df[hs_level].str.len() == (4 if hs_level == 'HS4' else 6)]
+    # Ensure only valid HS codes are used
+    df = df[df[hs_level].notna() & (df[hs_level].str.len() == (4 if hs_level == 'HS4' else 6))]
     if selected_year:
         df = df[df['refYear'] == selected_year]
-    grouped = df.groupby(['refYear', 'flowDesc', hs_level])[metric].sum().reset_index()
+    grouped = df.groupby(['refYear', 'flowDesc', hs_level], dropna=True)[metric].sum().reset_index()
     flow_order = {'export': 0, 'import': 1}
     grouped['flow_order'] = grouped['flowDesc'].map(flow_order)
     grouped = grouped.sort_values(by=['refYear', 'flow_order', hs_level])
@@ -78,6 +79,7 @@ def render_combined_stacked_bar(df, metric, hs_level, show="both", selected_year
         fig = px.bar(percent_df, x='year_flow', y='percentage', color=hs_level, text_auto='.1f')
         fig.update_layout(
             barmode='stack',
+            legend=dict(orientation='h', y=-0.2, x=0.5, xanchor='center'),
             xaxis_title="Year / Flow",
             yaxis_title="Percentage (%)",
             height=500,
@@ -117,6 +119,7 @@ def render_ratio_chart(df, hs_level, selected_year=None):
         labels={'valuePerUnit': 'Value / Quantity', hs_level: f'{hs_level} Code'}
     )
     fig.update_layout(
+            legend=dict(orientation='h', y=-0.25, x=0.5, xanchor='center'),
         xaxis_title="Year",
         yaxis_title="USD per Unit",
         height=500,
@@ -164,10 +167,7 @@ if combined_df is not None:
     hs6_options = sorted(set(code for code in hs6_candidates.dropna().unique() if len(code) == 6))
     selected_hs6 = st.multiselect("Select HS6 Codes (within selected HS4s)", options=hs6_options, default=hs6_options)
 
-    final_df = combined_df[
-        (combined_df['HS4'].isin(selected_hs4)) |
-        (combined_df['HS6'].isin(selected_hs6))
-    ]
+    final_df = combined_df[combined_df['HS4'].isin(selected_hs4) & combined_df['HS6'].isin(selected_hs6)]
 
     all_years = sorted(final_df['refYear'].dropna().unique())
     if all_years:
