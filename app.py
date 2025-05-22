@@ -81,8 +81,10 @@ def render_ratio_chart(df, hs_level, selected_year):
     df['valuePerUnit'] = df['value'] / df['quantity']
     grouped = df.groupby(['refYear', 'flowDesc', hs_level])['valuePerUnit'].mean().reset_index()
     fig = px.line(grouped, x='refYear', y='valuePerUnit', color=hs_level, line_group=hs_level,
-                  facet_col='flowDesc', markers=True,
-                  title="Value per Unit (USD / altQty or netWgt) Over Time",
+                      facet_col='flowDesc', markers=True,
+                      title="Value per Unit (USD / altQty or netWgt) Over Time",
+                      labels={'valuePerUnit': 'Value / Quantity', hs_level: f'{hs_level} Code'})
+        fig.update_layout(xaxis_title="Year", yaxis_title="USD per Unit", height=500, xaxis_type='category') Over Time",
                   labels={'valuePerUnit': 'Value / Quantity', hs_level: f'{hs_level} Code'})
     fig.update_layout(xaxis_title="Year", yaxis_title="USD per Unit", height=500)
     st.plotly_chart(fig, use_container_width=True)
@@ -161,7 +163,8 @@ if combined_df is not None:
             lambda row: row['altQty'] if pd.notnull(row['altQty']) and row['altQty'] > 0 else row['netWgt'], axis=1)
         df_filtered = df_filtered[df_filtered['quantity'] > 0]
         df_filtered['valuePerUnit'] = df_filtered['value'] / df_filtered['quantity']
-        grouped = df_filtered.groupby(['refYear', 'flowDesc', hs_level])['valuePerUnit'].mean().reset_index()
+        grouped = df_filtered.groupby(['refYear', 'flowDesc', hs_level], sort=False)['valuePerUnit'].mean().reset_index()
+        grouped = grouped.sort_values(by=['refYear', 'flowDesc'], ascending=[True, False])
         fig = px.line(grouped, x='refYear', y='valuePerUnit', color=hs_level, line_group=hs_level,
                       facet_col='flowDesc', markers=True,
                       title="Value per Unit (USD / altQty or netWgt) Over Time",
