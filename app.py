@@ -57,13 +57,14 @@ def render_combined_stacked_bar(df, metric, hs_level, show="both", selected_year
 
     if show in ["absolute", "both"]:
         st.markdown(f"### 📊 Absolute Stacked Bar – {metric.upper()} by {hs_level}")
+        category_order = grouped['year_flow'].tolist()
         fig = px.bar(grouped, x='year_flow', y=metric, color=hs_level, text_auto='.2s')
         fig.update_layout(
             barmode='stack',
             xaxis_title="Year / Flow",
             yaxis_title=f"{metric} ({'USD' if metric == 'value' else 'kg'})",
             height=500,
-            xaxis={'type': 'category'}
+            xaxis={'type': 'category', 'categoryorder': 'array', 'categoryarray': category_order}
         )
         st.plotly_chart(fig, use_container_width=True)
 
