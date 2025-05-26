@@ -8,12 +8,12 @@ DATA_FOLDER = "data"  # Folder containing HS2_Import.csv and HS2_Export.csv file
 st.set_page_config(page_title="HS Code Import/Export Analyzer", layout="wide")
 st.title("📦 HS Code Import/Export Analyzer (Folder Mode)")
 
-# Chart toggles
+# Chart toggles (for old section)
 show_sunburst = st.checkbox("Show Sunburst Charts", value=True, key="sunburst")
 show_absolute_bar = st.checkbox("Show Absolute Bar Charts", value=True, key="absolute")
 show_percentage_bar = st.checkbox("Show Percentage Bar Charts", value=True, key="percentage")
 show_ratio_chart = st.checkbox("Show Value-to-Quantity Ratio Chart", value=True, key="ratio")
-st.markdown("Select an HS2 code to visualize its Import/Export data from local files.")
+st.markdown("Select a hierarchy of HS codes to visualize flow graphs.")
 
 # Get available HS2 codes from filenames in folder
 def get_hs2_options():
@@ -37,115 +37,34 @@ def load_data_for_hs2(hs2_code):
 
 # Chart: Sunburst
 
-def render_combined_sunburst(df, metric, hs_level, selected_year):
-    st.markdown(f"### \U0001F310 Sunburst Chart – {metric.upper()} by {hs_level} for {selected_year}")
-    year_df = df[df['refYear'] == selected_year].copy()
-    grouped = year_df.groupby(['countryFlow', 'HS4', 'HS6'])[metric].sum().reset_index()
-    path = ['countryFlow', 'HS4'] if hs_level == 'HS4' else ['countryFlow', 'HS4', 'HS6']
-    if hs_level == 'HS4':
-        grouped = grouped.groupby(['countryFlow', 'HS4'])[metric].sum().reset_index()
-    fig = px.sunburst(grouped, path=path, values=metric, color='countryFlow',
-                      title=f"{int(selected_year)} ({'USD' if metric == 'value' else 'kg'})")
+def render_hierarchy_sunburst(df, metric):
+    st.markdown(f"### 🌐 Sunburst Chart – {metric.upper()} by HS Hierarchy")
+    grouped = df.groupby(["flowDesc", "HS2", "HS4", "HS6"])[metric].sum().reset_index()
+    fig = px.sunburst(grouped, path=["flowDesc", "HS2", "HS4", "HS6"], values=metric, color="flowDesc",
+                      title=f"Sunburst of {metric.upper()} by Flow and HS Codes")
     fig.update_traces(insidetextorientation='radial')
     st.plotly_chart(fig, use_container_width=True)
 
-# Chart: Bar (absolute or percentage)
-def render_combined_stacked_bar(df, metric, hs_level, show="both", selected_year=None):
-    # Ensure only valid HS codes are used
-    df = df[df[hs_level].notna() & (df[hs_level].str.len() == (4 if hs_level == 'HS4' else 6))]
-    if selected_year:
-        df = df[df['refYear'] == selected_year]
-    grouped = df.groupby(['refYear', 'flowDesc', hs_level], dropna=True)[metric].sum().reset_index()
-    flow_order = {'export': 0, 'import': 1}
-    grouped['flow_order'] = grouped['flowDesc'].map(flow_order)
-    grouped = grouped.sort_values(by=['refYear', 'flow_order', hs_level])
-    
-    grouped['year_flow'] = grouped['flowDesc'].str.capitalize() + "<br>" + grouped['refYear'].astype(str)
+# New Flow Graph Section
+st.markdown("---")
+st.header("📈 Custom Flow Graph Explorer")
 
-    if show in ["absolute", "both"]:
-        st.markdown(f"### 📊 Absolute Stacked Bar – {metric.upper()} by {hs_level}")
-        category_order = grouped['year_flow'].tolist()
-        fig = px.bar(grouped, x='year_flow', y=metric, color=hs_level, text_auto='.2s')
-        fig.update_layout(
-            barmode='stack',
-            legend=dict(orientation='h', y=-0.2, x=0.5, xanchor='center'),
-            xaxis_title="Year / Flow",
-            yaxis_title=f"{metric} ({'USD' if metric == 'value' else 'kg'})",
-            margin=dict(b=80),
-            height=500,
-            xaxis={'type': 'category', 'categoryorder': 'array', 'categoryarray': category_order}
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-    if show in ["percentage", "both"]:
-        st.markdown(f"### 📊 Percentage Stacked Bar – {metric.upper()} by {hs_level}")
-        pivot = grouped.pivot(index='year_flow', columns=hs_level, values=metric).fillna(0)
-        percent_df = pivot.div(pivot.sum(axis=1), axis=0).reset_index().melt(id_vars='year_flow', var_name=hs_level, value_name='percentage')
-        percent_df['percentage'] *= 100
-        fig = px.bar(percent_df, x='year_flow', y='percentage', color=hs_level, text_auto='.1f')
-        fig.update_layout(
-            barmode='stack',
-            legend=dict(orientation='h', y=-0.2, x=0.5, xanchor='center'),
-            xaxis_title="Year / Flow",
-            yaxis_title="Percentage (%)",
-            height=500,
-            xaxis={'type': 'category'}
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-# Chart: Value / Quantity Ratio using altQty unless it's zero, then use netWgt
-
-def render_ratio_chart(df, hs_level, selected_year=None):
-    if selected_year:
-        st.markdown(f"### 📈 Value-to-Quantity Ratio for {selected_year} (Value / altQty or netWgt)")
-        df = df[(df[hs_level].str.len() == (4 if hs_level == 'HS4' else 6)) & (df['refYear'] == selected_year)].copy()
-    else:
-        st.markdown("### 📈 Value-to-Quantity Ratio Chart (Combined Years)")
-        df = df[(df[hs_level].str.len() == (4 if hs_level == 'HS4' else 6))].copy()
-
-    df['quantity'] = df.apply(
-        lambda row: row['altQty'] if pd.notnull(row['altQty']) and row['altQty'] > 0 else row['netWgt'], axis=1)
-    df = df[df['quantity'] > 0]
-    df['valuePerUnit'] = df['value'] / df['quantity']
-
-    grouped = df.groupby(['refYear', 'flowDesc', hs_level], sort=False)['valuePerUnit'].mean().reset_index()
-    flow_order = {'export': 0, 'import': 1}
-    grouped['flow_order'] = grouped['flowDesc'].map(flow_order)
-    grouped = grouped.sort_values(by=['refYear', 'flow_order', hs_level])
-
-    fig = px.line(
-        grouped,
-        x='refYear',
-        y='valuePerUnit',
-        color=hs_level,
-        line_group=hs_level,
-        facet_col='flowDesc',
-        markers=True,
-        title="Value per Unit (USD / altQty or netWgt) Over Time",
-        labels={'valuePerUnit': 'Value / Quantity', hs_level: f'{hs_level} Code'}
-    )
-    fig.update_layout(
-            legend=dict(orientation='h', y=-0.25, x=0.5, xanchor='center'),
-        xaxis_title="Year",
-        yaxis_title="USD per Unit",
-        height=500,
-        xaxis={'type': 'category', 'categoryorder': 'array', 'categoryarray': sorted(grouped['refYear'].unique().tolist())}
-    )
-    st.plotly_chart(fig, use_container_width=True)
+# Chart type toggles
+enable_sunburst = st.checkbox("Enable Sunburst", value=True)
+enable_icicle = st.checkbox("Enable Icicle Chart", value=False)
+enable_treemap = st.checkbox("Enable Treemap", value=False)
 
 # MAIN APP FLOW
 available_hs2 = get_hs2_options()
-selected_hs2 = st.selectbox("Select HS2 Code (from folder)", available_hs2)
-hs_level = st.radio("Select HS Level", options=["HS4", "HS6"], horizontal=True)
+selected_hs2 = st.multiselect("Select HS2 Codes (from folder)", available_hs2)
 
-combined_df = load_data_for_hs2(selected_hs2)
-if combined_df is not None:
-    if 'reporterDesc' in combined_df.columns and 'flowDesc' in combined_df.columns:
-        importers = combined_df[combined_df['flowDesc'].str.lower() == 'import']['reporterDesc'].unique()
-        exporters = combined_df[combined_df['flowDesc'].str.lower() == 'export']['reporterDesc'].unique()
-        st.markdown(f"**\U0001F4E5 Importing Countries:** {', '.join(importers)}")
-        st.markdown(f"**\U0001F4E4 Exporting Countries:** {', '.join(exporters)}")
+combined_df = pd.DataFrame()
+for hs2 in selected_hs2:
+    df = load_data_for_hs2(hs2)
+    if df is not None:
+        combined_df = pd.concat([combined_df, df], ignore_index=True)
 
+if not combined_df.empty:
     required_columns = ['cmdCode', 'cifvalue', 'fobvalue', 'reporterDesc', 'flowDesc', 'refYear', 'netWgt']
     missing_columns = [col for col in required_columns if col not in combined_df.columns]
     if missing_columns:
@@ -153,57 +72,31 @@ if combined_df is not None:
         st.stop()
 
     combined_df['cmdCode'] = combined_df['cmdCode'].astype(str)
-    combined_df['HS4'] = combined_df['cmdCode'].str[:4]
     combined_df['HS6'] = combined_df['cmdCode'].str[:6]
+    combined_df['HS4'] = combined_df['cmdCode'].str[:4]
     combined_df['HS2'] = combined_df['cmdCode'].str[:2]
     combined_df['cifvalue'] = pd.to_numeric(combined_df['cifvalue'], errors='coerce')
     combined_df['fobvalue'] = pd.to_numeric(combined_df['fobvalue'], errors='coerce')
     combined_df['value'] = combined_df.apply(
         lambda row: row['fobvalue'] if pd.isna(row['cifvalue']) or row['cifvalue'] == 0 else row['cifvalue'], axis=1
     )
-    combined_df['reporterDesc'] = combined_df['reporterDesc'].fillna('Unknown Country')
-    combined_df['flowDesc'] = combined_df['flowDesc'].str.lower()
-    combined_df['countryFlow'] = combined_df['reporterDesc'] + " (" + combined_df['flowDesc'] + ")"
-    combined_df['refYear'] = pd.to_numeric(combined_df['refYear'], errors='coerce')
 
-    hs4_options = sorted(set(code for code in combined_df['HS4'].dropna().unique() if len(code) == 4))
-    selected_hs4 = st.multiselect("Select HS4 Codes", options=hs4_options, default=hs4_options)
+    hs2_options = sorted(set(combined_df['HS2'].dropna().unique()))
+    selected_hs2_filter = st.multiselect("Filter to Specific HS2 Codes (Optional)", hs2_options)
 
-    hs6_candidates = combined_df[combined_df['HS4'].isin(selected_hs4)]['HS6']
-    hs6_options = sorted(set(code for code in hs6_candidates.dropna().unique() if len(code) == 6))
-    selected_hs6 = st.multiselect("Select HS6 Codes (within selected HS4s)", options=hs6_options, default=hs6_options)
+    filtered_df = combined_df[combined_df['HS2'].isin(selected_hs2_filter)] if selected_hs2_filter else combined_df
 
-    final_df = combined_df[combined_df['HS4'].isin(selected_hs4) & combined_df['HS6'].isin(selected_hs6)]
+    hs4_options = sorted(set(filtered_df['HS4'].dropna().unique()))
+    selected_hs4 = st.multiselect("Filter to Specific HS4 Codes (Optional)", hs4_options)
+    if selected_hs4:
+        filtered_df = filtered_df[filtered_df['HS4'].isin(selected_hs4)]
 
-    all_years = sorted(final_df['refYear'].dropna().unique())
-    if all_years:
-        year_cols = st.columns(len(all_years))
-        selected_years = []
-        for i, y in enumerate(all_years):
-            with year_cols[i]:
-                if st.toggle(str(y), value=(y == all_years[0])):
-                    selected_years.append(y)
+    hs6_options = sorted(set(filtered_df['HS6'].dropna().unique()))
+    selected_hs6 = st.multiselect("Filter to Specific HS6 Codes (Optional)", hs6_options)
+    if selected_hs6:
+        filtered_df = filtered_df[filtered_df['HS6'].isin(selected_hs6)]
 
-        if show_sunburst:
-            st.markdown("## 🌐 Sunburst Charts by Year")
-            for year in selected_years:
-                st.markdown(f"### Year {year}")
-                col1, col2 = st.columns(2)
-                with col1:
-                    render_combined_sunburst(final_df, "value", hs_level, year)
-                with col2:
-                    render_combined_sunburst(final_df, "netWgt", hs_level, year)
-
-        if show_absolute_bar:
-            st.markdown("## 📊 Absolute Stacked Bar Chart (Combined Years)")
-            render_combined_stacked_bar(final_df[final_df['refYear'].isin(selected_years)], "value", hs_level, show="absolute")
-            render_combined_stacked_bar(final_df[final_df['refYear'].isin(selected_years)], "netWgt", hs_level, show="absolute")
-
-        if show_percentage_bar:
-            st.markdown("## 📊 Percentage Stacked Bar Chart (Combined Years)")
-            render_combined_stacked_bar(final_df[final_df['refYear'].isin(selected_years)], "value", hs_level, show="percentage")
-            render_combined_stacked_bar(final_df[final_df['refYear'].isin(selected_years)], "netWgt", hs_level, show="percentage")
-
-        if show_ratio_chart:
-            st.markdown("## 📈 Value to Quantity Ratio Chart (Combined Years)")
-            render_ratio_chart(final_df[final_df['refYear'].isin(selected_years)], hs_level)
+    if st.button("Generate Flow Graphs"):
+        if enable_sunburst:
+            render_hierarchy_sunburst(filtered_df, "value")
+            render_hierarchy_sunburst(filtered_df, "netWgt")
