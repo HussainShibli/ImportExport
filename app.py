@@ -51,7 +51,6 @@ def render_combined_sunburst(df, metric, hs_level, selected_year):
 
 # Chart: Bar (absolute or percentage)
 def render_combined_stacked_bar(df, metric, hs_level, show="both", selected_year=None):
-    # Ensure only valid HS codes are used
     df = df[df[hs_level].notna() & (df[hs_level].str.len() == (4 if hs_level == 'HS4' else 6))]
     if selected_year:
         df = df[df['refYear'] == selected_year]
@@ -59,7 +58,6 @@ def render_combined_stacked_bar(df, metric, hs_level, show="both", selected_year
     flow_order = {'export': 0, 'import': 1}
     grouped['flow_order'] = grouped['flowDesc'].map(flow_order)
     grouped = grouped.sort_values(by=['refYear', 'flow_order', hs_level])
-    
     grouped['year_flow'] = grouped['flowDesc'].str.capitalize() + "<br>" + grouped['refYear'].astype(str)
 
     if show in ["absolute", "both"]:
@@ -125,7 +123,7 @@ def render_ratio_chart(df, hs_level, selected_year=None):
         labels={'valuePerUnit': 'Value / Quantity', hs_level: f'{hs_level} Code'}
     )
     fig.update_layout(
-            legend=dict(orientation='h', y=-0.25, x=0.5, xanchor='center'),
+        legend=dict(orientation='h', y=-0.25, x=0.5, xanchor='center'),
         xaxis_title="Year",
         yaxis_title="USD per Unit",
         height=500,
@@ -207,3 +205,61 @@ if combined_df is not None:
         if show_ratio_chart:
             st.markdown("## 📈 Value to Quantity Ratio Chart (Combined Years)")
             render_ratio_chart(final_df[final_df['refYear'].isin(selected_years)], hs_level)
+
+# ========================= NEW CUSTOM FLOW GRAPH SECTION =========================
+st.markdown("---")
+st.header("📈 Custom Flow Graph Section")
+
+available_hs2_all = get_hs2_options()
+selected_multiple_hs2 = st.multiselect("Select One or More HS2 Codes", available_hs2_all)
+
+if selected_multiple_hs2:
+    combined_df_custom = pd.DataFrame()
+    for hs2_code in selected_multiple_hs2:
+        df = load_data_for_hs2(hs2_code)
+        if df is not None:
+            combined_df_custom = pd.concat([combined_df_custom, df], ignore_index=True)
+
+    if not combined_df_custom.empty:
+        combined_df_custom['cmdCode'] = combined_df_custom['cmdCode'].astype(str)
+        combined_df_custom['HS4'] = combined_df_custom['cmdCode'].str[:4]
+        combined_df_custom['HS6'] = combined_df_custom['cmdCode'].str[:6]
+        combined_df_custom['HS2'] = combined_df_custom['cmdCode'].str[:2]
+        combined_df_custom['cifvalue'] = pd.to_numeric(combined_df_custom['cifvalue'], errors='coerce')
+        combined_df_custom['fobvalue'] = pd.to_numeric(combined_df_custom['fobvalue'], errors='coerce')
+        combined_df_custom['value'] = combined_df_custom.apply(
+            lambda row: row['fobvalue'] if pd.isna(row['cifvalue']) or row['cifvalue'] == 0 else row['cifvalue'], axis=1
+        )
+        combined_df_custom['reporterDesc'] = combined_df_custom['reporterDesc'].fillna('Unknown Country')
+        combined_df_custom['flowDesc'] = combined_df_custom['flowDesc'].str.lower()
+        combined_df_custom['countryFlow'] = combined_df_custom['reporterDesc'] + " (" + combined_df_custom['flowDesc'] + ")"
+        combined_df_custom['refYear'] = pd.to_numeric(combined_df_custom['refYear'], errors='coerce')
+
+        hs4_all = sorted(set(combined_df_custom['HS4'].dropna().unique()))
+        hs4_selected = st.multiselect("Optionally filter HS4 Codes", hs4_all)
+        if hs4_selected:
+            combined_df_custom = combined_df_custom[combined_df_custom['HS4'].isin(hs4_selected)]
+
+        hs6_all = sorted(set(combined_df_custom['HS6'].dropna().unique()))
+        hs6_selected = st.multiselect("Optionally filter HS6 Codes", hs6_all)
+        if hs6_selected:
+            combined_df_custom = combined_df_custom[combined_df_custom['HS6'].isin(hs6_selected)]
+
+        st.subheader("Select Flow Graph Types to Generate")
+        sunburst_checked = st.checkbox("🌐 Sunburst Chart")
+        icicle_checked = st.checkbox("🧊 Icicle Chart (Coming Soon)", value=False)
+        treemap_checked = st.checkbox("🌲 Treemap (Coming Soon)", value=False)
+
+        if st.button("Generate Selected Graphs"):
+            if sunburst_checked:
+                st.markdown("### 🌐 Sunburst Chart (All Years Combined)")
+                grouped = combined_df_custom.groupby(["flowDesc", "HS2", "HS4", "HS6"])["value"].sum().reset_index()
+                fig = px.sunburst(grouped, path=["flowDesc", "HS2", "HS4", "HS6"], values="value", color="flowDesc")
+                fig.update_traces(insidetextorientation='radial')
+                st.plotly_chart(fig, use_container_width=True)
+            if icicle_checked:
+                st.info("Icicle chart functionality is under development.")
+            if treemap_checked:
+                st.info("Treemap functionality is under development.")
+
+# ========================= END CUSTOM SECTION =========================
