@@ -257,9 +257,17 @@ if selected_multiple_hs2:
                 fig = px.sunburst(grouped, path=["flowDesc", "HS2", "HS4", "HS6"], values="value", color="flowDesc")
                 fig.update_traces(insidetextorientation='radial')
                 st.plotly_chart(fig, use_container_width=True)
+
             if icicle_checked:
-                st.info("Icicle chart functionality is under development.")
+                st.markdown("### 🧊 Icicle Chart (All Years Combined)")
+                grouped = combined_df_custom.groupby(["flowDesc", "HS2", "HS4", "HS6"])["value"].sum().reset_index()
+                fig = px.icicle(grouped, path=["flowDesc", "HS2", "HS4", "HS6"], values="value", color="flowDesc")
+                st.plotly_chart(fig, use_container_width=True)
+
             if treemap_checked:
-                st.info("Treemap functionality is under development.")
+                st.markdown("### 🌲 Treemap (All Years Combined)")
+                grouped = combined_df_custom.groupby(["flowDesc", "HS2", "HS4", "HS6"])["value"].sum().reset_index()
+                fig = px.treemap(grouped, path=["flowDesc", "HS2", "HS4", "HS6"], values="value", color="flowDesc")
+                st.plotly_chart(fig, use_container_width=True)
 
 # ========================= END CUSTOM SECTION =========================
