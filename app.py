@@ -270,4 +270,46 @@ if selected_multiple_hs2:
                 fig = px.treemap(grouped, path=["flowDesc", "HS2", "HS4", "HS6"], values="value", color="flowDesc")
                 st.plotly_chart(fig, use_container_width=True)
 
+            if st.checkbox("🔀 Sankey Diagram (All Years Combined)"):
+                st.markdown("### 🔀 Sankey Diagram – Flow from HS2 to HS6")
+                grouped = combined_df_custom.groupby(["flowDesc", "HS2", "HS4", "HS6"])["value"].sum().reset_index()
+
+                sankey_data = []
+                labels = []
+                label_map = {}
+                index = 0
+
+                for level in ["HS2", "HS4", "HS6"]:
+                    unique = grouped[level].unique()
+                    for item in unique:
+                        if item not in label_map:
+                            label_map[item] = index
+                            labels.append(item)
+                            index += 1
+
+                for _, row in grouped.iterrows():
+                    sankey_data.append({
+                        "source": label_map[row["HS2"]],
+                        "target": label_map[row["HS4"]],
+                        "value": row["value"]
+                    })
+                    sankey_data.append({
+                        "source": label_map[row["HS4"]],
+                        "target": label_map[row["HS6"]],
+                        "value": row["value"]
+                    })
+
+                import plotly.graph_objects as go
+
+                fig = go.Figure(data=[go.Sankey(
+                    node=dict(pad=15, thickness=20, line=dict(color="black", width=0.5), label=labels),
+                    link=dict(
+                        source=[x["source"] for x in sankey_data],
+                        target=[x["target"] for x in sankey_data],
+                        value=[x["value"] for x in sankey_data]
+                    ))])
+
+                fig.update_layout(title_text="Sankey Diagram: Flow from HS2 → HS4 → HS6", font_size=10)
+                st.plotly_chart(fig, use_container_width=True)
+
 # ========================= END CUSTOM SECTION =========================
