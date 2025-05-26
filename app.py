@@ -21,6 +21,22 @@ def get_hs2_options():
     hs2_codes = sorted(set(f.split("_")[0] for f in files if f.endswith(".csv") and "_" in f))
     return hs2_codes
 
+# Preprocessing function to reduce redundancy
+def preprocess_dataframe(df):
+    df['cmdCode'] = df['cmdCode'].astype(str)
+    df['HS2'] = df['cmdCode'].str[:2]
+    df['HS4'] = df['cmdCode'].str[:4]
+    df['HS6'] = df['cmdCode'].str[:6]
+    df['cifvalue'] = pd.to_numeric(df['cifvalue'], errors='coerce')
+    df['fobvalue'] = pd.to_numeric(df['fobvalue'], errors='coerce')
+    df['value'] = df.apply(
+        lambda row: row['fobvalue'] if pd.isna(row['cifvalue']) or row['cifvalue'] == 0 else row['cifvalue'], axis=1)
+    df['reporterDesc'] = df['reporterDesc'].fillna('Unknown Country')
+    df['flowDesc'] = df['flowDesc'].str.lower()
+    df['countryFlow'] = df['reporterDesc'] + " (" + df['flowDesc'] + ")"
+    df['refYear'] = pd.to_numeric(df['refYear'], errors='coerce')
+    return df
+
 # Read import/export files for a specific HS2 code
 def load_data_for_hs2(hs2_code):
     try:
@@ -137,32 +153,7 @@ selected_hs2 = st.selectbox("Select HS2 Code (from folder)", available_hs2)
 hs_level = st.radio("Select HS Level", options=["HS4", "HS6"], horizontal=True)
 
 combined_df = load_data_for_hs2(selected_hs2)
-if combined_df is not None:
-    if 'reporterDesc' in combined_df.columns and 'flowDesc' in combined_df.columns:
-        importers = combined_df[combined_df['flowDesc'].str.lower() == 'import']['reporterDesc'].unique()
-        exporters = combined_df[combined_df['flowDesc'].str.lower() == 'export']['reporterDesc'].unique()
-        st.markdown(f"**\U0001F4E5 Importing Countries:** {', '.join(importers)}")
-        st.markdown(f"**\U0001F4E4 Exporting Countries:** {', '.join(exporters)}")
-
-    required_columns = ['cmdCode', 'cifvalue', 'fobvalue', 'reporterDesc', 'flowDesc', 'refYear', 'netWgt']
-    missing_columns = [col for col in required_columns if col not in combined_df.columns]
-    if missing_columns:
-        st.error(f"\u274C Missing required columns: {', '.join(missing_columns)}")
-        st.stop()
-
-    combined_df['cmdCode'] = combined_df['cmdCode'].astype(str)
-    combined_df['HS4'] = combined_df['cmdCode'].str[:4]
-    combined_df['HS6'] = combined_df['cmdCode'].str[:6]
-    combined_df['HS2'] = combined_df['cmdCode'].str[:2]
-    combined_df['cifvalue'] = pd.to_numeric(combined_df['cifvalue'], errors='coerce')
-    combined_df['fobvalue'] = pd.to_numeric(combined_df['fobvalue'], errors='coerce')
-    combined_df['value'] = combined_df.apply(
-        lambda row: row['fobvalue'] if pd.isna(row['cifvalue']) or row['cifvalue'] == 0 else row['cifvalue'], axis=1
-    )
-    combined_df['reporterDesc'] = combined_df['reporterDesc'].fillna('Unknown Country')
-    combined_df['flowDesc'] = combined_df['flowDesc'].str.lower()
-    combined_df['countryFlow'] = combined_df['reporterDesc'] + " (" + combined_df['flowDesc'] + ")"
-    combined_df['refYear'] = pd.to_numeric(combined_df['refYear'], errors='coerce')
+    combined_df = preprocess_dataframe(combined_df)
 
     hs4_options = sorted(set(code for code in combined_df['HS4'].dropna().unique() if len(code) == 4))
     selected_hs4 = st.multiselect("Select HS4 Codes", options=hs4_options, default=hs4_options)
@@ -221,19 +212,7 @@ if selected_multiple_hs2:
             combined_df_custom = pd.concat([combined_df_custom, df], ignore_index=True)
 
     if not combined_df_custom.empty:
-        combined_df_custom['cmdCode'] = combined_df_custom['cmdCode'].astype(str)
-        combined_df_custom['HS4'] = combined_df_custom['cmdCode'].str[:4]
-        combined_df_custom['HS6'] = combined_df_custom['cmdCode'].str[:6]
-        combined_df_custom['HS2'] = combined_df_custom['cmdCode'].str[:2]
-        combined_df_custom['cifvalue'] = pd.to_numeric(combined_df_custom['cifvalue'], errors='coerce')
-        combined_df_custom['fobvalue'] = pd.to_numeric(combined_df_custom['fobvalue'], errors='coerce')
-        combined_df_custom['value'] = combined_df_custom.apply(
-            lambda row: row['fobvalue'] if pd.isna(row['cifvalue']) or row['cifvalue'] == 0 else row['cifvalue'], axis=1
-        )
-        combined_df_custom['reporterDesc'] = combined_df_custom['reporterDesc'].fillna('Unknown Country')
-        combined_df_custom['flowDesc'] = combined_df_custom['flowDesc'].str.lower()
-        combined_df_custom['countryFlow'] = combined_df_custom['reporterDesc'] + " (" + combined_df_custom['flowDesc'] + ")"
-        combined_df_custom['refYear'] = pd.to_numeric(combined_df_custom['refYear'], errors='coerce')
+        combined_df_custom = preprocess_dataframe(combined_df_custom)
 
         hs4_all = sorted(set(combined_df_custom['HS4'].dropna().unique()))
         hs4_selected = st.multiselect("Optionally filter HS4 Codes", hs4_all)
@@ -303,14 +282,29 @@ if st.button("Generate Selected Graphs"):
                 import plotly.graph_objects as go
 
                 fig = go.Figure(data=[go.Sankey(
-                    node=dict(pad=15, thickness=20, line=dict(color="black", width=0.5), label=labels),
-                    link=dict(
-                        source=[x["source"] for x in sankey_data],
-                        target=[x["target"] for x in sankey_data],
-                        value=[x["value"] for x in sankey_data]
-                    ))])
+    arrangement="snap",
+    node=dict(
+        pad=15,
+        thickness=20,
+        line=dict(color="gray", width=0.5),
+        label=labels,
+        color=["#4B8BBE" if label in grouped['HS2'].values else "#306998" if label in grouped['HS4'].values else "#FFE873" for label in labels]
+    ),
+    link=dict(
+        source=[x["source"] for x in sankey_data],
+        target=[x["target"] for x in sankey_data],
+        value=[x["value"] for x in sankey_data],
+        color="rgba(192,192,192,0.4)",
+        hovertemplate='From %{source.label} to %{target.label}<br>Value: %{value:,.0f}<extra></extra>'
+    )
+)])
 
-                fig.update_layout(title_text="Sankey Diagram: Flow from HS2 → HS4 → HS6", font_size=10)
+                fig.update_layout(
+    title_text="Sankey Diagram: Flow from HS2 → HS4 → HS6",
+    font_size=12,
+    margin=dict(l=20, r=20, t=50, b=20),
+    height=600
+)
                 st.plotly_chart(fig, use_container_width=True)
 
 # ========================= END CUSTOM SECTION =========================
