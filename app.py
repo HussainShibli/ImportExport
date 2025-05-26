@@ -246,11 +246,12 @@ if selected_multiple_hs2:
             combined_df_custom = combined_df_custom[combined_df_custom['HS6'].isin(hs6_selected)]
 
         st.subheader("Select Flow Graph Types to Generate")
-        sunburst_checked = st.checkbox("🌐 Sunburst Chart")
-        icicle_checked = st.checkbox("🧊 Icicle Chart (Coming Soon)", value=False)
-        treemap_checked = st.checkbox("🌲 Treemap (Coming Soon)", value=False)
+sunburst_checked = st.checkbox("🌐 Sunburst Chart")
+icicle_checked = st.checkbox("🧊 Icicle Chart")
+treemap_checked = st.checkbox("🌲 Treemap")
+sankey_checked = st.checkbox("🔀 Sankey Diagram")
 
-        if st.button("Generate Selected Graphs"):
+if st.button("Generate Selected Graphs"):
             if sunburst_checked:
                 st.markdown("### 🌐 Sunburst Chart (All Years Combined)")
                 grouped = combined_df_custom.groupby(["flowDesc", "HS2", "HS4", "HS6"])["value"].sum().reset_index()
@@ -270,7 +271,7 @@ if selected_multiple_hs2:
                 fig = px.treemap(grouped, path=["flowDesc", "HS2", "HS4", "HS6"], values="value", color="flowDesc")
                 st.plotly_chart(fig, use_container_width=True)
 
-            if st.checkbox("🔀 Sankey Diagram (All Years Combined)"):
+            if sankey_checked:
                 st.markdown("### 🔀 Sankey Diagram – Flow from HS2 to HS6")
                 grouped = combined_df_custom.groupby(["flowDesc", "HS2", "HS4", "HS6"])["value"].sum().reset_index()
 
